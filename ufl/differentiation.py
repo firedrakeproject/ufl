@@ -137,12 +137,6 @@ class Grad(CompoundDerivative):
 
     def _ufl_expr_reconstruct_(self, op):
         "Return a new object of the same type with new operands."
-        if is_cellwise_constant(op):
-            ufl_assert(op.ufl_shape == self.ufl_operands[0].ufl_shape,
-                       "Operand shape mismatch in Grad reconstruct.")
-            ufl_assert(self.ufl_operands[0].ufl_free_indices == op.ufl_free_indices,
-                       "Free index mismatch in Grad reconstruct.")
-            return Zero(self.ufl_shape, self.ufl_free_indices, self.ufl_index_dimensions)
         return self._ufl_class_(op)
 
     def evaluate(self, x, mapping, component, index_values, derivatives=()):
@@ -184,12 +178,6 @@ class ReferenceGrad(CompoundDerivative):
 
     def _ufl_expr_reconstruct_(self, op):
         "Return a new object of the same type with new operands."
-        if is_cellwise_constant(op):
-            ufl_assert(op.ufl_shape == self.ufl_operands[0].ufl_shape,
-                       "Operand shape mismatch in ReferenceGrad reconstruct.")
-            ufl_assert(self.ufl_operands[0].ufl_free_indices == op.ufl_free_indices,
-                       "Free index mismatch in ReferenceGrad reconstruct.")
-            return Zero(self.ufl_shape, self.ufl_free_indices, self.ufl_index_dimensions)
         return self._ufl_class_(op)
 
     def evaluate(self, x, mapping, component, index_values, derivatives=()):
@@ -285,13 +273,6 @@ class NablaGrad(CompoundDerivative):
 
     def _ufl_expr_reconstruct_(self, op):
         "Return a new object of the same type with new operands."
-        if is_cellwise_constant(op):
-            ufl_assert(op.ufl_shape == self.ufl_operands[0].ufl_shape,
-                       "Operand shape mismatch in NablaGrad reconstruct.")
-            ufl_assert(self.ufl_operands[0].ufl_free_indices == op.ufl_free_indices,
-                       "Free index mismatch in NablaGrad reconstruct.")
-            return Zero(self.ufl_shape, self.ufl_free_indices,
-                        self.ufl_index_dimensions)
         return self._ufl_class_(op)
 
     @property
