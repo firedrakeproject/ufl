@@ -21,6 +21,8 @@
 # Modified by Anders Logg, 2011.
 # Modified by Massimiliano Leoni, 2016.
 
+from math import sqrt, atan2, pi
+
 from six.moves import xrange as range
 from six import iteritems
 
@@ -195,6 +197,9 @@ class Zero(ConstantValue):
     def __int__(self):
         return 0
 
+    def __complex__(self):
+        return 0 + 0j
+
 
 def zero(*shape):
     "UFL literal constant: Return a zero tensor with the given shape."
@@ -249,15 +254,73 @@ class ScalarValue(ConstantValue):
     def __int__(self):
         return int(self._value)
 
+    def __complex__(self):
+        return complex(self._value)
+
     def __neg__(self):
         return type(self)(-self._value)
 
     def __abs__(self):
         return type(self)(abs(self._value))
 
+    def real(self):
+        return self._value.real
+
+    def imag(self):
+        return self._value.imag
+
+
+@ufl_type(wraps_type=complex, is_literal=True)
+class ComplexValue(ScalarValue):
+    "UFL literal type: Representation of a constant, complex scalar"
+    __slots__ = ()
+
+    def __getnewargs__(self):
+        return (self._value,)
+
+    def __new__(cls, value):
+        if value.imag == 0:
+            if value.real == 0:
+                return Zero()
+            else:
+                return FloatValue(value.real)
+        else:
+            return ConstantValue.__new__(cls)
+
+    def __init__(self, value):
+        ScalarValue.__init__(self, complex(value))
+
+    def modulus(self):
+        return sqrt(self.value().real**2 + self.value().imag**2)
+
+    def argument(self):
+        if self.value().real == 0:
+            if self.value().imag > 0:
+                return pi/2
+            else:
+                return -pi/2
+        else:
+            return atan2(self.value().imag, self.value().real)
+
+    def __repr__(self):
+        r = "%s(%s)" % (type(self).__name__, repr(self._value))
+        return as_native_str(r)
+
+    def __float__(self):
+        raise TypeError("ComplexValues cannot be cast to float")
+
+    def __int__(self):
+        raise TypeError("ComplexValues cannot be cast to int")
+
+
+@ufl_type(is_abstract=True, is_scalar=True)
+class RealValue(ScalarValue):
+    "Abstract class used to differentiate real values from complex ones"
+    __slots__ = ()
+
 
 @ufl_type(wraps_type=float, is_literal=True)
-class FloatValue(ScalarValue):
+class FloatValue(RealValue):
     "UFL literal type: Representation of a constant scalar floating point value."
     __slots__ = ()
 
@@ -271,7 +334,7 @@ class FloatValue(ScalarValue):
         return ConstantValue.__new__(cls)
 
     def __init__(self, value):
-        ScalarValue.__init__(self, float(value))
+        super(FloatValue, self).__init__(float(value))
 
     def __repr__(self):
         r = "%s(%s)" % (type(self).__name__, format_float(self._value))
@@ -279,7 +342,7 @@ class FloatValue(ScalarValue):
 
 
 @ufl_type(wraps_type=int, is_literal=True)
-class IntValue(ScalarValue):
+class IntValue(RealValue):
     "UFL literal type: Representation of a constant scalar integer value."
     __slots__ = ()
 
@@ -298,15 +361,15 @@ class IntValue(ScalarValue):
             self = IntValue._cache.get(value)
             if self is not None:
                 return self
-            self = ScalarValue.__new__(cls)
+            self = RealValue.__new__(cls)
             IntValue._cache[value] = self
         else:
-            self = ScalarValue.__new__(cls)
+            self = RealValue.__new__(cls)
         self._init(value)
         return self
 
     def _init(self, value):
-        ScalarValue.__init__(self, int(value))
+        super(IntValue, self).__init__(int(value))
 
     def __init__(self, value):
         pass
@@ -407,6 +470,8 @@ def as_ufl(expression):
     "Converts expression to an Expr if possible."
     if isinstance(expression, Expr):
         return expression
+    elif isinstance(expression, complex):
+        return ComplexValue(expression)
     elif isinstance(expression, float):
         return FloatValue(expression)
     elif isinstance(expression, int):
