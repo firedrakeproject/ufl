@@ -26,14 +26,15 @@ from ufl.constantvalue import as_ufl
 from ufl.corealg.multifunction import MultiFunction
 from ufl.algorithms.map_integrands import map_integrand_dags
 from ufl.algorithms.analysis import has_exact_type
+from ufl.indexed import Indexed
 
 
 class Replacer(MultiFunction):
     def __init__(self, mapping):
         MultiFunction.__init__(self)
         self._mapping = mapping
-        if not all(k._ufl_is_terminal_ for k in mapping.keys()):
-            error("This implementation can only replace Terminal objects.")
+        if not all(k._ufl_is_terminal_ or isinstance(k, Indexed) for k in mapping.keys()):
+            error("This implementation can only replace Terminal or Indexed Terminal objects.")
         if not all(k.ufl_shape == v.ufl_shape for k, v in mapping.items()):
             error("Replacement expressions must have the same shape as what they replace.")
 
@@ -45,6 +46,8 @@ class Replacer(MultiFunction):
             return o
         else:
             return e
+
+    indexed = terminal
 
     def coefficient_derivative(self, o):
         error("Derivatives should be applied before executing replace.")
