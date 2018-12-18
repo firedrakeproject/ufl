@@ -32,19 +32,12 @@ class Replacer(MultiFunction):
     def __init__(self, mapping):
         MultiFunction.__init__(self)
         self._mapping = mapping
-        if not all(k._ufl_is_terminal_ for k in mapping.keys()):
-            error("This implementation can only replace Terminal objects.")
-        if not all(k.ufl_shape == v.ufl_shape for k, v in mapping.items()):
-            error("Replacement expressions must have the same shape as what they replace.")
 
-    expr = MultiFunction.reuse_if_untouched
-
-    def terminal(self, o):
-        e = self._mapping.get(o)
-        if e is None:
-            return o
+    def expr(self, o, *args):
+        if o in self._mapping:
+            return self._mapping[o]
         else:
-            return e
+            return self.reuse_if_untouched(o, *args)
 
     def coefficient_derivative(self, o):
         error("Derivatives should be applied before executing replace.")
