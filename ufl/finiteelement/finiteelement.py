@@ -126,7 +126,7 @@ class FiniteElement(FiniteElementBase):
                                             cell=cell)
 
             elif family == "DP":
-                return TensorProductelement(*[FiniteElement("DP", c, degree, variant=variant)
+                return TensorProductElement(*[FiniteElement("DP", c, degree, variant=variant)
                                               for c in cell.sub_cells()],
                                             cell=cell)
 
