@@ -125,6 +125,11 @@ class FiniteElement(FiniteElementBase):
                                               for c in cell.sub_cells()],
                                             cell=cell)
 
+            elif family == "DP":
+                return TensorProductelement(*[FiniteElement("DP", c, degree, variant=variant)
+                                              for c in cell.sub_cells()],
+                                            cell=cell)
+
         return super(FiniteElement, cls).__new__(cls)
 
     def __init__(self,
