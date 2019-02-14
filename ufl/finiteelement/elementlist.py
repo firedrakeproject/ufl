@@ -115,7 +115,7 @@ register_element("Lagrange", "CG", 0, H1, "identity", (1, None),
 register_element("Brezzi-Douglas-Marini", "BDM", 1, HDiv,
                  "contravariant Piola", (1, None), simplices[1:])  # "BDMF" (2d), "N2F" (3d)
 register_element("Discontinuous Lagrange", "DG", 0, L2, "identity", (0, None),
-                 any_cell)  # "DP" now obsolete, DP used for discontinuou_p element instead.
+                 any_cell)  # "DP"
 register_element("Discontinuous Taylor", "TDG", 0, L2, "identity", (0, None), simplices)
 register_element("Nedelec 1st kind H(curl)", "N1curl", 1, HCurl,
                  "covariant Piola", (1, None), simplices[1:])  # "RTE"  (2d), "N1E" (3d)
@@ -191,7 +191,6 @@ register_alias("DGT",
 # New elements introduced for the periodic table 2014
 register_element2("Q", 0, H1, "identity", (1, None), cubes)
 register_element2("DQ", 0, L2, "identity", (0, None), cubes)
-register_element2("DP", 0, L2, "identity", (0, None), cubes)
 register_element2("RTCE", 1, HCurl, "covariant Piola", (1, None),
                   ("quadrilateral",))
 register_element2("RTCF", 1, HDiv, "contravariant Piola", (1, None),
@@ -214,6 +213,8 @@ register_element2("AAF", 1, HDiv, "contravariant Piola", (1, None),
 
 # New aliases introduced for the periodic table 2014
 register_alias("P", lambda family, dim, order, degree: ("Lagrange", order))
+register_alias("DP", lambda family, dim, order,
+               degree: ("Discontinuous Lagrange", order))
 register_alias("RTE", lambda family, dim, order,
                degree: ("Nedelec 1st kind H(curl)", order))
 register_alias("RTF", lambda family, dim, order,
