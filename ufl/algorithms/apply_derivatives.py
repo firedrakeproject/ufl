@@ -34,7 +34,7 @@ from ufl.classes import Indexed, ListTensor, ComponentTensor
 from ufl.classes import ExprList, ExprMapping
 from ufl.classes import Product, Sum, IndexSum
 from ufl.classes import Conj, Real, Imag
-from ufl.classes import JacobianInverse
+from ufl.classes import JacobianInverse, JacobianDeterminant, FacetJacobianDeterminant
 from ufl.classes import SpatialCoordinate
 
 from ufl.constantvalue import is_true_ufl_scalar, is_ufl_scalar
@@ -51,6 +51,10 @@ from ufl.algorithms.map_integrands import map_integrand_dags
 
 from ufl.checks import is_cellwise_constant
 from ufl.differentiation import CoordinateDerivative
+
+from ufl.geometry import CellVolume, FacetArea
+from ufl.algorithms.apply_geometry_lowering import apply_geometry_lowering
+from ufl.algorithms.apply_function_pullbacks import apply_function_pullbacks
 # TODO: Add more rulesets?
 # - DivRuleset
 # - CurlRuleset
@@ -1119,6 +1123,9 @@ class CoordinateDerivativeRuleset(GenericDerivativeRuleset):
 
         # The coefficient(s) to differentiate w.r.t. and the
         # argument(s) s.t. D_w[v](e) = d/dtau e(w+tau v)|tau=0
+        self.coefficients = coefficients
+        self.arguments = arguments
+        self.coefficient_derivatives = coefficient_derivatives
         self._w = coefficients.ufl_operands
         self._v = arguments.ufl_operands
         self._w2v = {w: v for w, v in zip(self._w, self._v)}
@@ -1184,6 +1191,48 @@ class CoordinateDerivativeRuleset(GenericDerivativeRuleset):
             if o.ufl_domain() == w.ufl_domain() and isinstance(v.ufl_operands[0], FormArgument):
                 return ReferenceGrad(v)
         return self.independent_terminal(o)
+
+    # def cell_avg(self, o):
+    #     to_average = o.ufl_operands[0]
+    #     # return to_average
+    #     # a = cell_avg(CoordinateDerivative(to_average, self.coefficients, self.arguments, self.coefficient_derivatives))
+    #     a_ = CoordinateDerivative(to_average, self.coefficients, self.arguments, self.coefficient_derivatives)
+    #     domain = to_average.ufl_domain()
+    #     detJ = JacobianDeterminant(domain)
+    #     vol = CellVolume(domain)
+    #     # b = CoordinateDerivative(detJ, self.coefficients, self.arguments, self.coefficient_derivatives) / (vol * vol)
+    #     b_ = CoordinateDerivative(detJ, self.coefficients, self.arguments, self.coefficient_derivatives)
+    #     a = cell_avg(apply_coordinate_derivatives(a_))
+    #     b = apply_coordinate_derivatives(b_) / (vol * vol)
+    #     # import IPython; IPython.embed()
+    #     # import sys; sys.exit()
+    #     return a - b
+
+    def cell_volume(self, o):
+        domain = o.ufl_domain()
+
+        form = abs(JacobianDeterminant(domain))
+        form = apply_geometry_lowering(form)
+        form = apply_function_pullbacks(form)
+        form = CoordinateDerivative(form, self.coefficients, self.arguments, self.coefficient_derivatives)
+        form = apply_coordinate_derivatives(form)
+        # When cell_avg is assembled, it is multiplied with the determinant agin. We don't want that.
+        form = form / abs(JacobianDeterminant(domain))
+        form = CellVolume(domain) * cell_avg(form)
+        return form
+
+    def facet_area(self, o):
+        domain = o.ufl_domain()
+
+        form = abs(FacetJacobianDeterminant(domain))
+        form = apply_geometry_lowering(form)
+        form = apply_function_pullbacks(form)
+        form = CoordinateDerivative(form, self.coefficients, self.arguments, self.coefficient_derivatives)
+        form = apply_coordinate_derivatives(form)
+        # When facet_avg is assembled, it is multiplied with the determinant agin. We don't want that.
+        form = form / abs(FacetJacobianDeterminant(domain))
+        form = FacetArea(domain) * facet_avg(form)
+        return form
 
 
 class CoordinateDerivativeRuleDispatcher(MultiFunction):
