@@ -373,6 +373,7 @@ def find_geometric_dimension(expr):
         if hasattr(t, "ufl_domain"):
             domain = t.ufl_domain()
             if domain is not None:
+                
                 gdims.add(domain.geometric_dimension())
         if hasattr(t, "ufl_element"):
             element = t.ufl_element()

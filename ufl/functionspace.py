@@ -50,7 +50,14 @@ class FunctionSpace(AbstractFunctionSpace):
             pass
         else:
             try:
-                domain_cell = domain.ufl_cell()
+                if isinstance(domain, (list, tuple)):
+                    domain_cells = [d.ufl_cell() for d in domain]
+                    if domain_cells[:-1] == domain_cells[1:]:
+                        domain_cell = domain_cells[0]
+                    else:
+                        raise NotImplementedError("Multiple domains of different ufl_cell's are currently not considered.")
+                else:
+                    domain_cell = domain.ufl_cell()
             except AttributeError:
                 error("Expected non-abstract domain for initalization of function space.")
             else:
@@ -78,6 +85,8 @@ class FunctionSpace(AbstractFunctionSpace):
         domain = self.ufl_domain()
         if domain is None:
             return ()
+        elif isinstance(domain, (list, tuple)):
+            return domain
         else:
             return (domain,)
 
@@ -86,6 +95,10 @@ class FunctionSpace(AbstractFunctionSpace):
         element = self.ufl_element()
         if domain is None:
             ddata = None
+        elif isinstance(domain, (list, tuple)):
+            ddata = ()
+            for d in domain:
+                ddta += d._ufl_hash_data_()
         else:
             ddata = domain._ufl_hash_data_()
         if element is None:
@@ -99,6 +112,10 @@ class FunctionSpace(AbstractFunctionSpace):
         element = self.ufl_element()
         if domain is None:
             ddata = None
+        elif isinstance(domain, (list, tuple)):
+            ddata = ()
+            for d in domain:
+                ddta += d._ufl_signature_data_(renumbering)
         else:
             ddata = domain._ufl_signature_data_(renumbering)
         if element is None:
@@ -108,7 +125,15 @@ class FunctionSpace(AbstractFunctionSpace):
         return ("FunctionSpace", ddata, edata)
 
     def __repr__(self):
-        r = "FunctionSpace(%s, %s)" % (repr(self._ufl_domain), repr(self._ufl_element))
+        domain = self.ufl_domain()
+        if isinstance(domain, (list, tuple)):
+            domain_repr = "("
+            for d in domain:
+                domain_repr += repr(d) + ", "
+            domain_repr += ")"
+        else:
+            domain_repr = repr(self._ufl_domain)
+        r = "FunctionSpace(%s, %s)" % (domain_repr, repr(self._ufl_element))
         return as_native_str(r)
 
 
