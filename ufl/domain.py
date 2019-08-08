@@ -370,10 +370,14 @@ def find_geometric_dimension(expr):
     "Find the geometric dimension of an expression."
     gdims = set()
     for t in traverse_unique_terminals(expr):
-        if hasattr(t, "ufl_domain"):
+        if hasattr(t, "ufl_domains"):
+            domains = t.ufl_domains()
+            if domains is not None:
+                for domain in domains:
+                    gdims.add(domain.geometric_dimension())
+        elif hasattr(t, "ufl_domain"):
             domain = t.ufl_domain()
             if domain is not None:
-                
                 gdims.add(domain.geometric_dimension())
         if hasattr(t, "ufl_element"):
             element = t.ufl_element()
