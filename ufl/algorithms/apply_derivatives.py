@@ -551,6 +551,8 @@ class GradRuleset(GenericDerivativeRuleset):
             error("ReferenceValue can only wrap a terminal")
         print(999, type(f))
         print(999, repr(f))
+        import sys
+        sys.stdout.flush()
         domain = f.ufl_domain()
         K = JacobianInverse(domain)
         r = indices(len(o.ufl_shape))
