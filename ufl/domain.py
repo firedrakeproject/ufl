@@ -106,6 +106,8 @@ class Mesh(AbstractDomain):
         tdim = coordinate_element.cell().topological_dimension()
         AbstractDomain.__init__(self, tdim, gdim)
 
+        self._ufl_parent = None
+
     def ufl_cargo(self):
         "Return carried object that will not be used by UFL."
         return self._ufl_cargo
@@ -115,6 +117,12 @@ class Mesh(AbstractDomain):
 
     def ufl_cell(self):
         return self._ufl_coordinate_element.cell()
+
+    def ufl_base(self):
+        if self._ufl_parent is None:
+            return self
+        else:
+            return self._ufl_parent.ufl_base()
 
     def is_piecewise_linear_simplex_domain(self):
         return (self._ufl_coordinate_element.degree() == 1) and self.ufl_cell().is_simplex()
@@ -361,7 +369,11 @@ def extract_unique_domain(expr):
     if len(domains) == 1:
         return domains[0]
     elif domains:
-        error("Found multiple domains, cannot return just one.")
+        domain_bases = [d.ufl_base() for d in domains]
+        if domain_bases[:-1] == domain_bases[1:]:
+            return domain_bases[0]
+        else:        
+            error("Found multiple domains, cannot return just one.")
     else:
         return None
 

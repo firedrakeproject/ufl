@@ -464,10 +464,11 @@ class Form(object):
         # among integration domains
         k = len(dn)
         for c in cn:
-            d = c.ufl_domain()
-            if d is not None and d not in renumbering:
-                renumbering[d] = k
-                k += 1
+            ds = c.ufl_domains()
+            for d in ds:
+                if d is not None and d not in renumbering:
+                    renumbering[d] = k
+                    k += 1
 
         return renumbering
 

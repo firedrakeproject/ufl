@@ -140,7 +140,11 @@ class MixedFunctionSpace(AbstractFunctionSpace):
         if len(domains) == 1:
             return domains[0]
         elif domains:
-            error("Found multiple domains, cannot return just one.")
+            domain_bases = [d.ufl_base() for d in domains]
+            if domain_bases[:-1] == domain_bases[1:]:
+                return domain_bases[0]
+            else:
+                error("Found multiple domains of different bases, cannot return just one.")
         else:
             return None
 
