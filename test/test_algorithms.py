@@ -91,7 +91,8 @@ def test_pre_and_post_traversal():
     # ordering:
     assert list(pre_traversal(s)) == [s, p2, g, v, p1, f, v]
     assert list(post_traversal(s)) == [g, v, p2, f, v, p1, s]
-    assert list(unique_pre_traversal(s)) == [s, p2, g, v, p1, f]
+    #assert list(unique_pre_traversal(s)) == [s, p2, g, v, p1, f]
+    assert list(unique_pre_traversal(s)) == [s, p2, g, p1, f, v]
     assert list(unique_post_traversal(s)) == [v, f, p1, g, p2, s]
 
 

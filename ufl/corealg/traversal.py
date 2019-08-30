@@ -101,15 +101,22 @@ def unique_pre_traversal(expr, visited=None):
     stacksize = 1
     if visited is None:
         visited = set()
+    visited_list = []
     while stacksize > 0:
         stacksize -= 1
         expr = stack[stacksize]
         if expr not in visited:
-            visited.add(expr)
-            yield expr
+            visited_list.append(expr)
             for op in expr.ufl_operands:
                 stack[stacksize] = op
                 stacksize += 1
+    unique_visited_list = []
+    seen = set()
+    for expr in reversed(visited_list):
+        if expr not in seen:
+            unique_visited_list.insert(0, expr)
+            seen.add(expr)
+    return tuple(unique_visited_list)
 
 
 def unique_post_traversal(expr, visited=None):

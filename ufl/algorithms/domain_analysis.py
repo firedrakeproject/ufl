@@ -42,7 +42,8 @@ class IntegralData(object):
     __slots__ = as_native_strings(('domain', 'integral_type', 'subdomain_id',
                                    'integrals', 'metadata',
                                    'integral_coefficients',
-                                   'enabled_coefficients'))
+                                   'enabled_coefficients',
+                                   'enabled_components'))
 
     def __init__(self, domain, integral_type, subdomain_id, integrals,
                  metadata):
@@ -63,6 +64,7 @@ class IntegralData(object):
         # this stage:
         self.integral_coefficients = None
         self.enabled_coefficients = None
+        self.enabled_components = None
 
         # TODO: I think we can get rid of this with some refactoring
         # in ffc:

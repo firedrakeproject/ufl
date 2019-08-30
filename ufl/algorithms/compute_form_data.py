@@ -364,6 +364,64 @@ def compute_form_data(form,
         itg_data.enabled_coefficients = [bool(coeff in itg_data.integral_coefficients)
                                          for coeff in self.reduced_coefficients]
 
+    # Figure out which components are actually used if
+    # `coefficient.ufl_element()` is MixedElement.
+    # This is necessary to deal with a MixedFunctionSpace 
+    # that is composed of FunctionSpaces defined on multiple domains.
+    orig_form = group_form_integrals(self.original_form, self.original_form.ufl_domains(),
+                                     do_append_everywhere_integrals=do_append_everywhere_integrals)
+    #move these later
+    from ufl import Coefficient
+    from ufl.core.multiindex import MultiIndex, FixedIndex
+    from ufl.corealg.traversal import unique_pre_traversal
+    from ufl.indexed import Indexed
+    from ufl.finiteelement import MixedElement
+    from collections import defaultdict
+    original_integrals_list = defaultdict(list)
+    for integral in orig_form.integrals():
+        domain = integral.ufl_domain()
+        integral_type = integral.integral_type()
+        subdomain_id = integral.subdomain_id()
+        original_integrals_list[(domain, integral_type, subdomain_id)].append(integral)
+
+    for itg_data in self.integral_data:
+        domain = itg_data.domain
+        integral_type = itg_data.integral_type
+        subdomain_id = itg_data.subdomain_id
+        original_integrals = original_integrals_list[(domain, integral_type, subdomain_id)]
+        enabled_components_list = defaultdict(list)
+        use_all_components = set()
+        for integral in original_integrals:
+            # Find:
+            # Coefficient(MixedElement...)   MultiIndex((FixedIndex(i), ), )
+            #                          \       /
+            #                         Indexed(...)
+            for v in unique_pre_traversal(integral.integrand()):
+                if isinstance(v, Indexed):
+                    expr = v.ufl_operands[0]
+                    multiindex = v.ufl_operands[1]
+                    if isinstance(expr, Coefficient) and isinstance(expr.ufl_element(), MixedElement):
+                        assert len(multiindex) == 1
+                        if type(multiindex[0]) is FixedIndex:
+                            enabled_components_list[expr].append(int(multiindex[0]))
+                        else:
+                            # Assume all components of expr are to be used
+                            use_all_components.add(expr)
+                else:
+                    for o in v.ufl_operands:
+                        if isinstance(o, Coefficient) and isinstance(o.ufl_element(), MixedElement):
+                            # Assume all components of o are to be used
+                            use_all_components.add(o)
+        for expr in list(use_all_components):
+            enabled_components_list[expr] = []
+        enabled_components = [None] * self.num_coefficients
+        for i, enabled in enumerate(itg_data.enabled_coefficients):
+            if enabled:
+                coeff = self.reduced_coefficients[i]
+                if len(enabled_components_list[coeff]) > 0:
+                    enabled_components[i] = enabled_components_list[coeff]
+        itg_data.enabled_components = enabled_components
+
     # --- Collect some trivial data
 
     # Get rank of form from argument list (assuming not a mixed arity form)

@@ -67,7 +67,10 @@ class FunctionSpace(AbstractFunctionSpace):
 
     def ufl_domain(self):
         "Return ufl domain."
-        return self._ufl_domain
+        if self._ufl_domain is None:
+            return None
+        else:
+            return self._ufl_domain.ufl_base()
 
     def ufl_element(self):
         "Return ufl element."
@@ -82,7 +85,7 @@ class FunctionSpace(AbstractFunctionSpace):
             return (domain,)
 
     def _ufl_hash_data_(self):
-        domain = self.ufl_domain()
+        domain = self._ufl_domain
         element = self.ufl_element()
         if domain is None:
             ddata = None
@@ -95,7 +98,7 @@ class FunctionSpace(AbstractFunctionSpace):
         return ("FunctionSpace", ddata, edata)
 
     def _ufl_signature_data_(self, renumbering):
-        domain = self.ufl_domain()
+        domain = self._ufl_domain
         element = self.ufl_element()
         if domain is None:
             ddata = None
@@ -140,11 +143,7 @@ class MixedFunctionSpace(AbstractFunctionSpace):
         if len(domains) == 1:
             return domains[0]
         elif domains:
-            domain_bases = [d.ufl_base() for d in domains]
-            if domain_bases[:-1] == domain_bases[1:]:
-                return domain_bases[0]
-            else:
-                error("Found multiple domains of different bases, cannot return just one.")
+            error("Found domains of different base domains, cannot return just one.")
         else:
             return None
 

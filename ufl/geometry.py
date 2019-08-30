@@ -104,7 +104,7 @@ class GeometricQuantity(Terminal):
         self._domain = as_domain(domain)
 
     def ufl_domains(self):
-        return (self._domain,)
+        return (self._domain.ufl_base(), )
 
     def is_cellwise_constant(self):
         "Return whether this expression is spatially constant over each cell (or over each facet for facet quantities)."
