@@ -93,7 +93,7 @@ class ConstantValue(Terminal):
 @ufl_type(is_literal=True)
 class Zero(ConstantValue):
     "UFL literal type: Representation of a zero valued expression."
-    __slots__ = as_native_strings(("ufl_shape", "ufl_free_indices", "ufl_index_dimensions", "_ufl_domain", "_ufl_element"))
+    __slots__ = as_native_strings(("ufl_shape", "ufl_free_indices", "ufl_index_dimensions"))
 
     _cache = {}
 
@@ -146,20 +146,9 @@ class Zero(ConstantValue):
 
             self.ufl_free_indices = free_indices
             self.ufl_index_dimensions = index_dimensions
-        self._ufl_domain = domain
-        self._ufl_element = element
 
     def evaluate(self, x, mapping, component, index_values):
         return 0.0
-
-    def ufl_domains(self):
-        return (self._ufl_domain, ) or ()
-
-    def ufl_domain(self):
-        return self._ufl_domain
-
-    def ufl_element(self):
-        return self._ufl_element
 
     def __str__(self):
         if self.ufl_shape == () and self.ufl_free_indices == ():
