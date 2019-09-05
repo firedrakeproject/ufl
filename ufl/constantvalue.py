@@ -98,24 +98,24 @@ class Zero(ConstantValue):
     _cache = {}
 
     def __getnewargs__(self):
-        return (self.ufl_shape, self.ufl_free_indices, self.ufl_index_dimensions, self._ufl_domain, self._ufl_element)
+        return (self.ufl_shape, self.ufl_free_indices, self.ufl_index_dimensions)
 
-    def __new__(cls, shape=(), free_indices=(), index_dimensions=None, domain=None, element=None):
+    def __new__(cls, shape=(), free_indices=(), index_dimensions=None):
         if free_indices:
             self = ConstantValue.__new__(cls)
         else:
-            self = Zero._cache.get((shape, domain, element))
+            self = Zero._cache.get(shape)
             if self is not None:
                 return self
             self = ConstantValue.__new__(cls)
-            Zero._cache[(shape, domain, element)] = self
-        self._init(shape, free_indices, index_dimensions, domain, element)
+            Zero._cache[shape] = self
+        self._init(shape, free_indices, index_dimensions)
         return self
 
-    def __init__(self, shape=(), free_indices=(), index_dimensions=None, domain=None, element=None):
+    def __init__(self, shape=(), free_indices=(), index_dimensions=None):
         pass
 
-    def _init(self, shape=(), free_indices=(), index_dimensions=None, domain=None, element=None):
+    def _init(self, shape=(), free_indices=(), index_dimensions=None):
         ConstantValue.__init__(self)
 
         if not all(isinstance(i, int) for i in shape):
