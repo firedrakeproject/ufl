@@ -138,7 +138,7 @@ class Mesh(AbstractDomain):
         return (self._ufl_id, self._ufl_coordinate_element)
 
     def _ufl_signature_data_(self, renumbering):
-        return ("Mesh", renumbering[self], self._ufl_coordinate_element)
+        return ("Mesh", renumbering[self.ufl_base()], self._ufl_coordinate_element)
 
     # NB! Dropped __lt__ here, don't want users to write 'mesh1 <
     # mesh2'.
