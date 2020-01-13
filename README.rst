@@ -2,7 +2,7 @@
 UFL - Unified Form Language
 ===========================
 
-We have moved to github: https://github.com/FEniCS/fiat
+We have moved to github: https://github.com/FEniCS/ufl
 =======================================================
 
 The Unified Form Language (UFL) is a domain specific language for
