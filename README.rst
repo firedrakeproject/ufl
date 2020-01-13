@@ -2,6 +2,9 @@
 UFL - Unified Form Language
 ===========================
 
+We have moved to github: https://github.com/FEniCS/fiat
+=======================================================
+
 The Unified Form Language (UFL) is a domain specific language for
 declaration of finite element discretizations of variational
 forms. More precisely, it defines a flexible interface for choosing
