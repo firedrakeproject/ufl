@@ -3,20 +3,9 @@
 
 # Copyright (C) 2008-2016 Martin Sandve Alnæs
 #
-# This file is part of UFL.
+# This file is part of UFL (https://www.fenicsproject.org)
 #
-# UFL is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# UFL is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with UFL. If not, see <http://www.gnu.org/licenses/>.
+# SPDX-License-Identifier:    LGPL-3.0-or-later
 #
 # Modified by Anders Logg, 2009-2011.
 # Modified by Massimiliano Leoni, 2016.
@@ -33,10 +22,9 @@ from ufl.equation import Equation
 from ufl.core.expr import Expr
 from ufl.core.expr import ufl_err_str
 from ufl.constantvalue import Zero
-from ufl.utils.str import as_native_strings, as_native_str
 
 # Export list for ufl.classes
-__all_classes__ = as_native_strings(["Form"])
+__all_classes__ = ["Form"]
 
 # --- The Form class, representing a complete variational form or functional ---
 
@@ -350,7 +338,7 @@ class Form(object):
         to replace Coefficients with expressions of matching shapes.
 
         Example:
-
+        -------
           V = FiniteElement("CG", triangle, 1)
           v = TestFunction(V)
           u = TrialFunction(V)
@@ -408,7 +396,7 @@ class Form(object):
         # Not caching this because it can be huge
         itgs = ", ".join(repr(itg) for itg in self.integrals())
         r = "Form([" + itgs + "])"
-        return as_native_str(r)
+        return r
 
     # --- Analysis functions, precomputation and caching of various quantities
 

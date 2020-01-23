@@ -3,37 +3,24 @@
 
 # Copyright (C) 2015-2016 Martin Sandve Alnæs
 #
-# This file is part of UFL.
+# This file is part of UFL (https://www.fenicsproject.org)
 #
-# UFL is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# UFL is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with UFL. If not, see <http://www.gnu.org/licenses/>.
+# SPDX-License-Identifier:    LGPL-3.0-or-later
 #
 # Modified by Massimiliano Leoni, 2016
 # Modified by Cecile Daversin-Catty, 2018
 
-from ufl.utils.str import as_native_str
-from ufl.utils.str import as_native_strings
 from ufl.log import error
 from ufl.core.ufl_type import attach_operators_from_hash_data
 from ufl.domain import join_domains
 
 # Export list for ufl.classes
-__all_classes__ = as_native_strings([
+__all_classes__ = [
     "AbstractFunctionSpace",
     "FunctionSpace",
     "MixedFunctionSpace",
     "TensorProductFunctionSpace",
-])
+]
 
 
 class AbstractFunctionSpace(object):
@@ -109,7 +96,7 @@ class FunctionSpace(AbstractFunctionSpace):
 
     def __repr__(self):
         r = "FunctionSpace(%s, %s)" % (repr(self._ufl_domain), repr(self._ufl_element))
-        return as_native_str(r)
+        return r
 
 
 @attach_operators_from_hash_data
@@ -129,7 +116,7 @@ class TensorProductFunctionSpace(AbstractFunctionSpace):
 
     def __repr__(self):
         r = "TensorProductFunctionSpace(*%s)" % repr(self._ufl_function_spaces)
-        return as_native_str(r)
+        return r
 
 
 @attach_operators_from_hash_data
@@ -192,4 +179,4 @@ class MixedFunctionSpace(AbstractFunctionSpace):
 
     def __repr__(self):
         r = "MixedFunctionSpace(*%s)" % repr(self._ufl_function_spaces)
-        return as_native_str(r)
+        return r

@@ -3,20 +3,9 @@
 
 # Copyright (C) 2008-2016 Martin Sandve Alnæs
 #
-# This file is part of UFL.
+# This file is part of UFL (https://www.fenicsproject.org)
 #
-# UFL is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# UFL is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with UFL. If not, see <http://www.gnu.org/licenses/>.
+# SPDX-License-Identifier:    LGPL-3.0-or-later
 #
 # Modified by Anders Logg, 2009
 # Modified by Massimiliano Leoni, 2016
@@ -56,10 +45,11 @@ def extract_blocks(form, i=None, j=None):
     extract the block corresponding to the indices ix, iy.
 
     Example:
-
+    -------
        a = inner(grad(u), grad(v))*dx + div(u)*q*dx + div(v)*p*dx
        extract_blocks(a, 0, 0) -> inner(grad(u), grad(v))*dx
        extract_blocks(a) -> [inner(grad(u), grad(v))*dx, div(v)*p*dx, div(u)*q*dx, 0]
+
     """
     return ufl.algorithms.formsplitter.extract_blocks(form, i, j)
 
@@ -69,10 +59,11 @@ def lhs(form):
     Given a combined bilinear and linear form,
     extract the left hand side (bilinear form part).
 
-    Example::
-
+    Example:
+    -------
         a = u*v*dx + f*v*dx
         a = lhs(a) -> u*v*dx
+
     """
     form = as_form(form)
     form = expand_derivatives(form)
@@ -84,10 +75,11 @@ def rhs(form):
     Given a combined bilinear and linear form,
     extract the right hand side (negated linear form part).
 
-    Example::
-
+    Example:
+    -------
         a = u*v*dx + f*v*dx
         L = rhs(a) -> -f*v*dx
+
     """
     form = as_form(form)
     form = expand_derivatives(form)
