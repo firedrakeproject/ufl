@@ -43,20 +43,23 @@ class MixedElement(FiniteElementBase):
                     for e in elements]
         self._sub_elements = elements
 
-        # Pick the first cell, for now all should be equal
-        cells = tuple([element.cell() for element in elements])
-        if cells[1:] == cells[:-1]:
-            # Deal with the traditional MixedElement here
-            cell = cells[0]
-            self._cells = (cell, )
+        # Support MixedElement with cells of different types/dimensions
+        cells = tuple(sorted(set(element.cell() for element in elements) - set([None])))
+        self._cells = cells
+        if cells:
+            if cells[1:] == cells[:-1]:
+                # Deal with the traditional MixedElement here
+                cell = cells[0]
+            else:
+                # Deal with a general MixedElement in which
+                # component FiniteElements are defined on cells
+                # of different types/dimensions
+                if not type(self) is MixedElement:
+                    error("Use MixedElement if components live on cells of different types/dimensions.")
+                # Use tuple to represent a mixed cell
+                cell = tuple(element.cell() for element in elements)
         else:
-            # Deal with a general MixedElement in which
-            # componnet FiniteElements are defined on cells
-            # of different types/dimensions
-            if not type(self) is MixedElement:
-                error("Use MixedElement if components live on cells of different types/dimensions.")
-            cell = cells
-            self._cells = cells
+            cell = None
 
         # Check that all elements use the same quadrature scheme TODO:
         # We can allow the scheme not to be defined.

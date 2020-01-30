@@ -43,16 +43,16 @@ class FiniteElementBase(object):
             error("Invalid reference_value_shape type.")
 
         def check_cell(c):
-            if c is not None:
-                c = as_cell(c)
-                if not isinstance(c, AbstractCell):
-                    error("Invalid cell type.")
+            c = as_cell(c)
+            if not isinstance(c, AbstractCell):
+                error("Invalid cell type.")
             return c
 
-        if isinstance(cell, tuple):
-            cell = tuple([check_cell(c) for c in cell])
-        else:
-            cell = check_cell(cell)
+        if cell is not None:
+            if isinstance(cell, tuple):
+                cell = tuple(check_cell(c) for c in cell)
+            else:
+                cell = check_cell(cell)
 
         self._family = family
         self._cell = cell

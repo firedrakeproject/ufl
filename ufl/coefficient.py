@@ -20,6 +20,7 @@ from ufl.domain import default_domain
 from ufl.functionspace import AbstractFunctionSpace, FunctionSpace, MixedFunctionSpace
 from ufl.split_functions import split
 from ufl.utils.counted import counted_init
+from functools import lru_cache
 
 # --- The Coefficient class represents a coefficient in a form ---
 
@@ -42,7 +43,12 @@ class Coefficient(FormArgument):
             # For legacy support for .ufl files using cells, we map
             # the cell to The Default Mesh
             element = function_space
-            domain = default_domain(element.cell())
+            cell = element.cell()
+            if isinstance(cell, tuple):
+                # MixedElement on mixed-cell
+                domain = tuple(default_domain(c) for c in cell)
+            else:
+                domain = default_domain(cell)
             function_space = FunctionSpace(domain, element)
         elif not isinstance(function_space, AbstractFunctionSpace):
             error("Expecting a FunctionSpace or FiniteElement.")
@@ -52,6 +58,15 @@ class Coefficient(FormArgument):
 
         self._repr = "Coefficient(%s, %s)" % (
             repr(self._ufl_function_space), repr(self._count))
+
+        if function_space.mixed():
+            # MixedElement on mixed-cell
+            domains = function_space.ufl_domain()
+            elements = function_space.ufl_element().sub_elements()
+            self._components = tuple(Coefficient(FunctionSpace(domains[i], elements[i]))
+                                     for i in range(len(domains)))
+        else:
+            self._components = None
 
     def count(self):
         return self._count
@@ -104,6 +119,26 @@ class Coefficient(FormArgument):
             return True
         return (self._count == other._count and
                 self._ufl_function_space == other._ufl_function_space)
+
+    def mixed(self):
+        "Return True if this coefficient is defined on a mixed function space."
+        return self.ufl_function_space().mixed()
+
+    @lru_cache()
+    def _split(self):
+        "Construct a tuple of component coefficients if mixed()."
+        if not self.mixed():
+            error("_split method must only be called when mixed().")
+        return tuple(type(self)(V) for V in self.ufl_function_space().split())
+
+    def split(self):
+        "Split into a tuple of constituent coefficients."
+        return self._split()
+
+    def __getitem__(self, index):
+        if self.mixed():
+            return self.split()[index]
+        return super().__getitem__(index)
 
 
 # --- Helper functions for subfunctions on mixed elements ---

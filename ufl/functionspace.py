@@ -13,6 +13,7 @@
 from ufl.log import error
 from ufl.core.ufl_type import attach_operators_from_hash_data
 from ufl.domain import join_domains
+from functools import lru_cache
 
 # Export list for ufl.classes
 __all_classes__ = [
@@ -31,19 +32,32 @@ class AbstractFunctionSpace(object):
 @attach_operators_from_hash_data
 class FunctionSpace(AbstractFunctionSpace):
     def __init__(self, domain, element):
+
+        def check_domain(d, c):
+            try:
+                domain_cell = d.ufl_cell()
+            except AttributeError:
+                error("Expected non-abstract domain for initalization of function space.")
+            else:
+                if c != domain_cell:
+                    error("Non-matching cell of finite element and domain.")
+
         if domain is None:
             # DOLFIN hack
             # TODO: Is anything expected from element.cell() in this case?
             pass
+        elif isinstance(domain, tuple):
+            # Deal with MixedElement with mixed-cell
+            cell = element.cell()
+            if not isinstance(cell, tuple):
+                error("Must have a Mixed cell (tuple) if we have a Mixed domain (tuple).")
+            if len(domain) != len(cell):
+                error("Mixed cell (tuple) and Mixed domain (tuple) must have the same length.")
+            for d, c in zip(domain, cell):
+                check_domain(d, c)
         else:
-            try:
-                domain_cell = domain.ufl_cell()
-            except AttributeError:
-                error("Expected non-abstract domain for initalization of function space.")
-            else:
-                if element.cell() != domain_cell:
-                    error("Non-matching cell of finite element and domain.")
-
+            check_domain(domain, element.cell())
+        
         AbstractFunctionSpace.__init__(self)
         self._ufl_domain = domain
         self._ufl_element = element
@@ -73,6 +87,8 @@ class FunctionSpace(AbstractFunctionSpace):
         element = self.ufl_element()
         if domain is None:
             ddata = None
+        elif isinstance(domain, tuple):
+            ddata = tuple(d._ufl_hash_data_() for d in domain)
         else:
             ddata = domain._ufl_hash_data_()
         if element is None:
@@ -86,6 +102,8 @@ class FunctionSpace(AbstractFunctionSpace):
         element = self.ufl_element()
         if domain is None:
             ddata = None
+        elif isinstance(domain, tuple):
+            ddata = tuple(d._ufl_signature_data_(renumbering) for d in domain)
         else:
             ddata = domain._ufl_signature_data_(renumbering)
         if element is None:
@@ -97,6 +115,26 @@ class FunctionSpace(AbstractFunctionSpace):
     def __repr__(self):
         r = "FunctionSpace(%s, %s)" % (repr(self._ufl_domain), repr(self._ufl_element))
         return r
+
+    def mixed(self):
+        return isinstance(self.ufl_domain(), tuple)
+
+    @lru_cache()
+    def _split(self):
+        "Construct a tuple of component FunctionSpaces if mixed()."
+        if not self.mixed():
+            error("_split method must only be called when mixed().")
+        return tuple(type(self)(d, e)
+                     for d, e in zip(self.ufl_domain(), self.ufl_element().sub_elements()))
+
+    def split(self):
+        "Split into a tuple of constituent spaces."
+        return self._split()
+
+    def __getitem__(self, index):
+        if self.mixed():
+            return self.split()[index]
+        return super().__getitem__(index)
 
 
 @attach_operators_from_hash_data

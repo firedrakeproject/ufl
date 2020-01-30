@@ -17,9 +17,10 @@ from ufl.log import error
 from ufl.core.ufl_type import ufl_type
 from ufl.core.terminal import FormArgument
 from ufl.split_functions import split
-from ufl.finiteelement import FiniteElementBase
+from ufl.finiteelement import FiniteElementBase, MixedElement
 from ufl.domain import default_domain
 from ufl.functionspace import AbstractFunctionSpace, FunctionSpace, MixedFunctionSpace
+from functools import lru_cache
 
 # Export list for ufl.classes (TODO: not actually classes: drop? these are in ufl.*)
 __all_classes__ = ["TestFunction", "TrialFunction", "TestFunctions", "TrialFunctions"]
@@ -36,6 +37,7 @@ class Argument(FormArgument):
         "_number",
         "_part",
         "_repr",
+        "_components"
     )
 
     def __init__(self, function_space, number, part=None):
@@ -45,7 +47,12 @@ class Argument(FormArgument):
             # For legacy support for .ufl files using cells, we map the cell to
             # the default Mesh
             element = function_space
-            domain = default_domain(element.cell())
+            cell = element.cell()
+            if isinstance(cell, tuple):
+                # MixedElement on mixed-cell
+                domain = tuple(default_domain(c) for c in cell)
+            else:
+                domain = default_domain(cell)
             function_space = FunctionSpace(domain, element)
         elif not isinstance(function_space, AbstractFunctionSpace):
             error("Expecting a FunctionSpace or FiniteElement.")
@@ -143,6 +150,29 @@ class Argument(FormArgument):
                 self._number == other._number and
                 self._part == other._part and
                 self._ufl_function_space == other._ufl_function_space)
+
+    def mixed(self):
+        "Return True if this argument is defined on a mixed function space."
+        return self.ufl_function_space().mixed()
+
+    @lru_cache()
+    def _split(self):
+        "Construct a tuple of component arguments if mixed()."
+        if not self.mixed():
+            error("_split method must only be called when mixed().")
+        return tuple(Argument(V, self.number(), i)
+                     for i, V in enumerate(self.ufl_function_space().split()))
+
+    def split(self):
+        "Split into a tuple of constituent coefficients."
+        return self._split()
+
+    def __getitem__(self, index):
+        if self.mixed():
+            return self.split()[index]
+        return super().__getitem__(index)
+
+
 
 # --- Helper functions for pretty syntax ---
 
