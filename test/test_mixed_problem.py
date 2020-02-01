@@ -22,7 +22,7 @@ def test_mixed_element():
     element2 = FiniteElement("Lagrange", cell2, 1)
 
     # Define a mixed element on a mixed cell
-    mixed_element =  MixedElement(element3, element2)
+    mixed_element =  MixedElement(element3, element2, mixed=True)
 
     # Define a mixed domain
     domain = (Mesh(cell3),
@@ -43,10 +43,10 @@ def test_mixed_element():
 
     n = FacetNormal(cell3)
     
-    #ds0 = Measure("ds", domain[0])
-    #a10 = dot(u[0], n) * v[1] * ds0
-    dx1 = Measure("dx", domain[1])
-    a10 = dot(u[0], n) * v[1] * dx1
+    ds0 = Measure("ds", domain[0])
+    a10 = dot(u[0], n) * v[1] * ds0
+    #dx1 = Measure("dx", domain[1])
+    #a10 = dot(u[0], n) * v[1] * dx1
 
     fd = compute_form_data(a10,
                            do_apply_function_pullbacks=True,

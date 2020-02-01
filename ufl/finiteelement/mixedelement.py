@@ -26,14 +26,14 @@ from ufl.finiteelement.finiteelement import FiniteElement
 class MixedElement(FiniteElementBase):
     """A finite element composed of a nested hierarchy of mixed or simple
     elements."""
-    __slots__ = ("_sub_elements", "_cells")
+    __slots__ = ("_sub_elements", "_cells", "_mixed")
 
     def __init__(self, *elements, **kwargs):
         "Create mixed finite element from given list of elements"
 
-        if type(self) is MixedElement:
-            if kwargs:
-                error("Not expecting keyword arguments to MixedElement constructor.")
+        #if type(self) is MixedElement:
+        #    if kwargs:
+        #        error("Not expecting keyword arguments to MixedElement constructor.")
 
         # Un-nest arguments if we get a single argument with a list of elements
         if len(elements) == 1 and isinstance(elements[0], (tuple, list)):
@@ -44,22 +44,27 @@ class MixedElement(FiniteElementBase):
         self._sub_elements = elements
 
         # Support MixedElement with cells of different types/dimensions
+
+        # If _mixed=True, we create a mixed cell tuple, (cell0, cell0, cell0, ...),
+        # even if only a single cell exists.
+        self._mixed = kwargs.get('mixed', False)
         cells = tuple(sorted(set(element.cell() for element in elements) - set([None])))
         self._cells = cells
-        if cells:
-            if cells[1:] == cells[:-1]:
-                # Deal with the traditional MixedElement here
-                cell = cells[0]
-            else:
-                # Deal with a general MixedElement in which
-                # component FiniteElements are defined on cells
-                # of different types/dimensions
-                if not type(self) is MixedElement:
-                    error("Use MixedElement if components live on cells of different types/dimensions.")
-                # Use tuple to represent a mixed cell
-                cell = tuple(element.cell() for element in elements)
+        if self._mixed:
+            # Deal with a general MixedElement in which
+            # component FiniteElements are defined on cells
+            # of different types/dimensions
+            # Use tuple to represent a mixed cell
+            cell = tuple(element.cell() for element in elements)
         else:
-            cell = None
+            # Deal with the traditional MixedElement here
+            if cells:
+                if cells[1:] == cells[:-1]:
+                    cell = cells[0]
+                else:
+                    error("Construct MixedElement with 'mixed'=True if component elements live on cells of different types/dimensions.")
+            else:
+                cell = None
 
         # Check that all elements use the same quadrature scheme TODO:
         # We can allow the scheme not to be defined.
@@ -96,8 +101,8 @@ class MixedElement(FiniteElementBase):
 
         # Cache repr string
         if type(self) is MixedElement:
-            self._repr = "MixedElement(%s)" % (
-                ", ".join(repr(e) for e in self._sub_elements),)
+            self._repr = "MixedElement(%s, mixed=%r)" % (
+                ", ".join(repr(e) for e in self._sub_elements), self._mixed)
 
     def reconstruct_from_elements(self, *elements):
         "Reconstruct a mixed element from new subelements."

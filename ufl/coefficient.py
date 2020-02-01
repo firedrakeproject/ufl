@@ -59,14 +59,14 @@ class Coefficient(FormArgument):
         self._repr = "Coefficient(%s, %s)" % (
             repr(self._ufl_function_space), repr(self._count))
 
-        if function_space.mixed():
-            # MixedElement on mixed-cell
-            domains = function_space.ufl_domain()
-            elements = function_space.ufl_element().sub_elements()
-            self._components = tuple(Coefficient(FunctionSpace(domains[i], elements[i]))
-                                     for i in range(len(domains)))
-        else:
-            self._components = None
+        #if function_space.mixed():
+        #    # MixedElement on mixed-cell
+        #    domains = function_space.ufl_domain()
+        #    elements = function_space.ufl_element().sub_elements()
+        #    self._components = tuple(Coefficient(FunctionSpace(domains[i], elements[i]))
+        #                             for i in range(len(domains)))
+        #else:
+        #    self._components = None
 
     def count(self):
         return self._count
