@@ -252,6 +252,10 @@ class MixedElement(FiniteElementBase):
         tmp = ", ".join(element.shortstr() for element in self._sub_elements)
         return "Mixed<" + tmp + ">"
 
+    def mixed(self):
+        "Return True if defined on a mixed cell."
+        return self._mixed
+
 
 class VectorElement(MixedElement):
     "A special case of a mixed finite element where all elements are equal."
