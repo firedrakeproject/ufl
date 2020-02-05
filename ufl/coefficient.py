@@ -121,9 +121,10 @@ class Coefficient(FormArgument):
                 self._ufl_function_space == other._ufl_function_space)
 
     def mixed(self):
-        "Return True if this coefficient is defined on a mixed function space."
+        "Return True if defined on a mixed function space."
         return self.ufl_function_space().mixed()
 
+    @property
     @lru_cache()
     def _split(self):
         "Construct a tuple of component coefficients if mixed()."
@@ -133,7 +134,7 @@ class Coefficient(FormArgument):
 
     def split(self):
         "Split into a tuple of constituent coefficients."
-        return self._split()
+        return self._split
 
     def __getitem__(self, index):
         if self.mixed():

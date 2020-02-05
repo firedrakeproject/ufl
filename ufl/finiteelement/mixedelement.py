@@ -240,7 +240,18 @@ class MixedElement(FiniteElementBase):
             return e.degree()
 
     def reconstruct(self, **kwargs):
-        return MixedElement(*[e.reconstruct(**kwargs) for e in self.sub_elements()])
+        if 'cell' in kwargs:
+            _cell = kwargs.pop('cell')
+            if isinstance(_cell, tuple):
+                if len(_cell) != len(self):
+                    error("Number of cells provided does not match number of sub elements.")
+            else:
+                _cell = tuple(_cell for _ in self.sub_elements())
+        return MixedElement(*[e.reconstruct(cell=c, **kwargs) for e, c in zip(self.sub_elements(), _cell)], mixed=self.mixed())
+
+    def __len__(self):
+        "Return the number of sub elements."
+        return len(self.sub_elements())
 
     def __str__(self):
         "Format as string for pretty printing."

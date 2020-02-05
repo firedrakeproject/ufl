@@ -37,10 +37,10 @@ class Argument(FormArgument):
         "_number",
         "_part",
         "_repr",
-        "_components"
+        "_parent",
     )
 
-    def __init__(self, function_space, number, part=None):
+    def __init__(self, function_space, number, part=None, parent=None):
         FormArgument.__init__(self)
 
         if isinstance(function_space, FiniteElementBase):
@@ -66,6 +66,7 @@ class Argument(FormArgument):
             error("Expecting None or an int for part, not %s" % (part,))
         self._number = number
         self._part = part
+        self._parent = parent
 
         self._repr = "Argument(%s, %s, %s)" % (
             repr(self._ufl_function_space), repr(self._number), repr(self._part))
@@ -155,23 +156,28 @@ class Argument(FormArgument):
         "Return True if this argument is defined on a mixed function space."
         return self.ufl_function_space().mixed()
 
+    @property
+    def parent(self):
+        "Return the parent argument from which this argument is extructed."
+        return self._parent
+
+    @property
     @lru_cache()
     def _split(self):
         "Construct a tuple of component arguments if mixed()."
         if not self.mixed():
             error("_split method must only be called when mixed().")
-        return tuple(Argument(V, self.number(), i)
+        return tuple(type(self)(V, self.number(), part=i, parent=self)
                      for i, V in enumerate(self.ufl_function_space().split()))
 
     def split(self):
         "Split into a tuple of constituent coefficients."
-        return self._split()
+        return self._split
 
     def __getitem__(self, index):
         if self.mixed():
             return self.split()[index]
         return super().__getitem__(index)
-
 
 
 # --- Helper functions for pretty syntax ---
