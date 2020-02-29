@@ -449,7 +449,6 @@ class Form(object):
         # Define canonical numbering of arguments and coefficients
         self._arguments = tuple(
             sorted(set(arguments), key=lambda x: x.number()))
-            #sorted(set(a if a.parent is None else a.parent for a in set(arguments)), key=lambda x: x.number()))
         self._coefficients = tuple(
             sorted(set(coefficients), key=lambda x: x.count()))
         self._coefficient_numbering = dict(
@@ -478,13 +477,12 @@ class Form(object):
             dd = a.ufl_function_space().ufl_domain()
             # Deal with the case in which dd is a tuple: i.e.
             # a.ufl_function_space() has a mixed domain
-            for d in tuple(dd):
+            if not isinstance(dd, tuple):
+                dd = (dd, )
+            for d in dd:
                 if d is not None and d not in renumbering:
                     renumbering[d] = k
                     k += 1
-            #if d is not None and d not in renumbering:
-            #    renumbering[d] = k
-            #    k += 1
 
         return renumbering
 

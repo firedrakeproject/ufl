@@ -22,6 +22,7 @@ from ufl.algorithms.formtransformations import compute_form_arities
 from ufl.algorithms.check_arities import check_form_arity
 
 # These are the main symbolic processing steps:
+from ufl.algorithms.split_mixed_coefficients import split_mixed_coefficients
 from ufl.algorithms.apply_function_pullbacks import apply_function_pullbacks
 from ufl.algorithms.apply_algebra_lowering import apply_algebra_lowering
 from ufl.algorithms.apply_derivatives import apply_derivatives, apply_coordinate_derivatives
@@ -247,9 +248,15 @@ def compute_form_data(form,
     if complex_mode:
         form = do_comparison_check(form)
 
+
+
+    print("before:::", repr(form))
+    form = split_mixed_coefficients(form)
+
     # Lower abstractions for tensor-algebra types into index notation,
     # reducing the number of operators later algorithms and form
     # compilers need to handle
+    print("after:::", repr(form))
     form = apply_algebra_lowering(form)
 
     # After lowering to index notation, remove any complex nodes that
@@ -333,7 +340,20 @@ def compute_form_data(form,
         for itg in itg_data.integrals:
             itg_coeffs.update(extract_coefficients(itg.integrand()))
         # Store with IntegralData object
-        itg_data.integral_coefficients = itg_coeffs
+        itg_data.integral_coefficients = []
+        itg_data.integral_coefficients_parts = {}
+        for itg_coeff in itg_coeffs:
+            parent = itg_coeff.parent
+            if parent is None:
+                # Regular coefficient
+                itg_data.integral_coefficients.append(itg_coeff)
+                itg_data.integral_coefficients_parts[itg_coeff] = None
+            else:
+                # Component of a mixed coefficient
+                if parent not in itg_data.integral_coefficients:
+                    itg_data.integral_coefficients.append(parent)
+                    itg_data.integral_coefficients_parts[parent] = set()
+                itg_data.integral_coefficients_parts[parent].update((parent.split().index(itg_coeff), ))
 
     # Figure out which coefficients from the original form are
     # actually used in any integral (Differentiation may reduce the

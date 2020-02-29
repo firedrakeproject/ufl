@@ -30,6 +30,7 @@ class IntegralData(object):
     __slots__ = ('domain', 'integral_type', 'subdomain_id',
                  'integrals', 'metadata',
                  'integral_coefficients',
+                 'integral_coefficients_parts',
                  'enabled_coefficients')
 
     def __init__(self, domain, integral_type, subdomain_id, integrals,
@@ -50,6 +51,7 @@ class IntegralData(object):
         # This is populated in preprocess using data not available at
         # this stage:
         self.integral_coefficients = None
+        self.integral_coefficients_parts = None
         self.enabled_coefficients = None
 
         # TODO: I think we can get rid of this with some refactoring

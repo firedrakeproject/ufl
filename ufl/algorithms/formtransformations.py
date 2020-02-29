@@ -403,6 +403,11 @@ def compute_form_action(form, coefficient):
     # Extract all arguments
     arguments = form.arguments()
 
+    #_ = tuple(sorted(set(arg.parent if arg.parent else arg for arg in arguments), 
+    #                 key = lambda x: x.number()))
+    #if _[-1].mixed():
+    #    arguments = _
+    #
     parts = [arg.part() for arg in arguments]
     if set(parts) - {None}:
         error("compute_form_action cannot handle parts.")

@@ -47,12 +47,12 @@ class FunctionSpace(AbstractFunctionSpace):
             # TODO: Is anything expected from element.cell() in this case?
             pass
         elif isinstance(domain, tuple):
-            # Deal with MixedElement with mixed-cell
+            # Deal with MixedElement on a mixed cell
             cell = element.cell()
             if not isinstance(cell, tuple):
-                error("Must have a Mixed cell (tuple) if we have a Mixed domain (tuple).")
+                error("Must have a mixed cell (tuple) if we have a mixed domain (tuple).")
             if len(domain) != len(cell):
-                error("Mixed cell (tuple) and Mixed domain (tuple) must have the same length.")
+                error("Mixed cell (tuple) and mixed domain (tuple) must have the same length.")
             for d, c in zip(domain, cell):
                 check_domain(d, c)
         else:
@@ -76,6 +76,8 @@ class FunctionSpace(AbstractFunctionSpace):
 
     def ufl_domains(self):
         "Return ufl domains."
+        if self.mixed():
+            raise NotImplementedError("mmm: not sure what to do with ufl_domains")
         domain = self.ufl_domain()
         if domain is None:
             return ()
@@ -123,19 +125,21 @@ class FunctionSpace(AbstractFunctionSpace):
     @lru_cache()
     def _split(self):
         "Construct a tuple of component FunctionSpaces if mixed()."
-        if not self.mixed():
-            error("_split method must only be called when mixed().")
         return tuple(type(self)(d, e)
                      for d, e in zip(self.ufl_domain(), self.ufl_element().sub_elements()))
 
     def split(self):
-        "Split into a tuple of constituent spaces."
-        return self._split
-
-    def __getitem__(self, index):
+        "Split into constituent spaces."
         if self.mixed():
-            return self.split()[index]
-        return super().__getitem__(index)
+            return self._split
+        else:
+            return (self, )
+
+    #mmm:
+    #def __getitem__(self, index):
+    #    if self.mixed():
+    #        return self.split()[index]
+    #    return super().__getitem__(index)
 
 
 @attach_operators_from_hash_data

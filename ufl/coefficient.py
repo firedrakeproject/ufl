@@ -35,7 +35,7 @@ class Coefficient(FormArgument):
     _ufl_noslots_ = True
     _globalcount = 0
 
-    def __init__(self, function_space, count=None):
+    def __init__(self, function_space, count=None, part=None, parent=None):
         FormArgument.__init__(self)
         counted_init(self, count, Coefficient)
 
@@ -45,7 +45,7 @@ class Coefficient(FormArgument):
             element = function_space
             cell = element.cell()
             if isinstance(cell, tuple):
-                # MixedElement on mixed-cell
+                # MixedElement on a mixed cell
                 domain = tuple(default_domain(c) for c in cell)
             else:
                 domain = default_domain(cell)
@@ -56,20 +56,22 @@ class Coefficient(FormArgument):
         self._ufl_function_space = function_space
         self._ufl_shape = function_space.ufl_element().value_shape()
 
-        self._repr = "Coefficient(%s, %s)" % (
-            repr(self._ufl_function_space), repr(self._count))
+        self._part = part
+        self._parent = parent
 
-        #if function_space.mixed():
-        #    # MixedElement on mixed-cell
-        #    domains = function_space.ufl_domain()
-        #    elements = function_space.ufl_element().sub_elements()
-        #    self._components = tuple(Coefficient(FunctionSpace(domains[i], elements[i]))
-        #                             for i in range(len(domains)))
-        #else:
-        #    self._components = None
+        self._repr = "Coefficient(%s, %s, %s, %s)" % (
+            repr(self._ufl_function_space), repr(self._count), repr(self._part), repr(self._parent))
 
     def count(self):
         return self._count
+
+    def part(self):
+        return self._part
+
+    @property
+    def parent(self):
+        "Return the parent coefficient from which this coefficient is extructed."
+        return self._parent
 
     @property
     def ufl_shape(self):
@@ -100,14 +102,15 @@ class Coefficient(FormArgument):
         "Signature data for form arguments depend on the global numbering of the form arguments and domains."
         count = renumbering[self]
         fsdata = self._ufl_function_space._ufl_signature_data_(renumbering)
-        return ("Coefficient", count, fsdata)
+        return ("Coefficient", count, self._part, self._parent, fsdata)
 
     def __str__(self):
         count = str(self._count)
         if len(count) == 1:
-            return "w_%s" % count
+            s = "w_%s" % count
         else:
-            return "w_{%s}" % count
+            s = "w_{%s}" % count
+        return s
 
     def __repr__(self):
         return self._repr
@@ -118,6 +121,8 @@ class Coefficient(FormArgument):
         if self is other:
             return True
         return (self._count == other._count and
+                self._part == other._part and
+                self._parent == other._parent and
                 self._ufl_function_space == other._ufl_function_space)
 
     def mixed(self):
@@ -128,18 +133,24 @@ class Coefficient(FormArgument):
     @lru_cache()
     def _split(self):
         "Construct a tuple of component coefficients if mixed()."
-        if not self.mixed():
-            error("_split method must only be called when mixed().")
-        return tuple(type(self)(V) for V in self.ufl_function_space().split())
+        return tuple(type(self)(V, part=i, parent=self)
+                     for i, V in enumerate(self.ufl_function_space().split()))
 
     def split(self):
         "Split into a tuple of constituent coefficients."
-        return self._split
-
-    def __getitem__(self, index):
         if self.mixed():
-            return self.split()[index]
-        return super().__getitem__(index)
+            return self._split
+        else:
+            return (self, )
+
+    def __iter__(self):
+        return iter(self.split())
+
+    #mmm:
+    #def __getitem__(self, index):
+    #    if self.mixed():
+    #        return self.split()[index]
+    #    return super().__getitem__(index)
 
 
 # --- Helper functions for subfunctions on mixed elements ---

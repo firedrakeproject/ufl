@@ -49,7 +49,7 @@ class Argument(FormArgument):
             element = function_space
             cell = element.cell()
             if isinstance(cell, tuple):
-                # MixedElement on mixed-cell
+                # MixedElement on a mixed cell
                 domain = tuple(default_domain(c) for c in cell)
             else:
                 domain = default_domain(cell)
@@ -68,8 +68,8 @@ class Argument(FormArgument):
         self._part = part
         self._parent = parent
 
-        self._repr = "Argument(%s, %s, %s)" % (
-            repr(self._ufl_function_space), repr(self._number), repr(self._part))
+        self._repr = "Argument(%s, %s, %s, %s)" % (
+            repr(self._ufl_function_space), repr(self._number), repr(self._part), repr(self._parent))
 
     @property
     def ufl_shape(self):
@@ -99,6 +99,11 @@ class Argument(FormArgument):
     def part(self):
         return self._part
 
+    @property
+    def parent(self):
+        "Return the parent argument from which this argument is extructed."
+        return self._parent
+
     def is_cellwise_constant(self):
         "Return whether this expression is spatially constant over each cell."
         # TODO: Should in principle do like with Coefficient,
@@ -116,7 +121,7 @@ class Argument(FormArgument):
     def _ufl_signature_data_(self, renumbering):
         "Signature data for form arguments depend on the global numbering of the form arguments and domains."
         fsdata = self._ufl_function_space._ufl_signature_data_(renumbering)
-        return ("Argument", self._number, self._part, fsdata)
+        return ("Argument", self._number, self._part, self._parent, fsdata)
 
     def __str__(self):
         number = str(self._number)
@@ -150,6 +155,7 @@ class Argument(FormArgument):
         return (type(self) == type(other) and
                 self._number == other._number and
                 self._part == other._part and
+                self._parent == other._parent and
                 self._ufl_function_space == other._ufl_function_space)
 
     def mixed(self):
@@ -157,27 +163,27 @@ class Argument(FormArgument):
         return self.ufl_function_space().mixed()
 
     @property
-    def parent(self):
-        "Return the parent argument from which this argument is extructed."
-        return self._parent
-
-    @property
     @lru_cache()
     def _split(self):
         "Construct a tuple of component arguments if mixed()."
-        if not self.mixed():
-            error("_split method must only be called when mixed().")
         return tuple(type(self)(V, self.number(), part=i, parent=self)
                      for i, V in enumerate(self.ufl_function_space().split()))
 
     def split(self):
         "Split into a tuple of constituent coefficients."
-        return self._split
-
-    def __getitem__(self, index):
         if self.mixed():
-            return self.split()[index]
-        return super().__getitem__(index)
+            return self._split
+        else:
+            return (self, )
+
+    def __iter__(self):
+        return iter(self.split())
+
+    #mmm:
+    #def __getitem__(self, index):
+    #    if self.mixed():
+    #        return self.split()[index]
+    #    return super().__getitem__(index)
 
 
 # --- Helper functions for pretty syntax ---
