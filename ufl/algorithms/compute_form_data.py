@@ -192,6 +192,12 @@ def _build_coefficient_replace_map(coefficients, element_mapping=None):
         new_coefficients.append(new_f)
         replace_map[f] = new_f
 
+    for f in coefficients:
+        if f.mixed():
+            new_f = replace_map[f]
+            for sub_new, sub_old in zip(new_f, f):
+                replace_map[sub_old] = sub_new
+
     return new_coefficients, replace_map
 
 

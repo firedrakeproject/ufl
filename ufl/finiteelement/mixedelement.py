@@ -26,7 +26,8 @@ from ufl.finiteelement.finiteelement import FiniteElement
 class MixedElement(FiniteElementBase):
     """A finite element composed of a nested hierarchy of mixed or simple
     elements."""
-    __slots__ = ("_sub_elements", "_cells", "_mixed")
+    #__slots__ = ("_sub_elements", "_cells", "_mixed")
+    __slots__ = ("_sub_elements", "_cells")
 
     def __init__(self, *elements, **kwargs):
         "Create mixed finite element from given list of elements"
@@ -47,10 +48,12 @@ class MixedElement(FiniteElementBase):
 
         # If _mixed=True, we create a mixed cell tuple, (cell0, cell0, cell0, ...),
         # even if only a single cell exists.
-        self._mixed = kwargs.get('mixed', False)
+        #self._mixed = kwargs.get('mixed', False)
+        _mixed = kwargs.get('mixed', False)
         cells = tuple(sorted(set(element.cell() for element in elements) - set([None])))
         self._cells = cells
-        if self._mixed:
+        #if self._mixed:
+        if _mixed:
             # Deal with a general MixedElement in which
             # component FiniteElements are defined on cells
             # of different types/dimensions
@@ -102,7 +105,7 @@ class MixedElement(FiniteElementBase):
         # Cache repr string
         if type(self) is MixedElement:
             self._repr = "MixedElement(%s, mixed=%r)" % (
-                ", ".join(repr(e) for e in self._sub_elements), self._mixed)
+                ", ".join(repr(e) for e in self._sub_elements), self.mixed())
 
     def reconstruct_from_elements(self, *elements):
         "Reconstruct a mixed element from new subelements."
@@ -265,7 +268,8 @@ class MixedElement(FiniteElementBase):
 
     def mixed(self):
         "Return True if defined on a mixed cell."
-        return self._mixed
+        #return self._mixed
+        return isinstance(self.cell(), tuple)
 
 
 class VectorElement(MixedElement):
