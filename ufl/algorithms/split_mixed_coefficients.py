@@ -28,6 +28,7 @@ class MixedCoefficientSplitRuleset(MultiFunction):
             i = indices[0]
             assert isinstance(i, FixedIndex), ""
             i = int(i)
+            print("f and i::", f, i)
             return f.split()[i]
         else:
             return o

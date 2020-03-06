@@ -25,6 +25,18 @@ from ufl.utils.sequences import product
 import numpy
 
 
+def flatten_domain_element(domain, element):
+    "Return the flattened (domain, element) pairs for mixed domain problems."
+    if not isinstance(domain, tuple):
+        #assert not element.mixed()
+        return ((domain, element), )
+    assert element.mixed()
+    flattened = ()
+    for d, e in zip(domain, element.sub_elements()):
+        flattened += flatten_domain_element(d, e)
+    return flattened
+
+
 def sub_elements_with_mappings(element):
     "Return an ordered list of the largest subelements that have a defined mapping."
     if element.mapping() != "undefined":
@@ -80,18 +92,28 @@ def apply_single_function_pullbacks(g):
 
     # Create some geometric objects for reuse
     domain = g.ufl_domain()
-    J = Jacobian(domain)
-    detJ = JacobianDeterminant(domain)
-    Jinv = JacobianInverse(domain)
 
-    # Create contravariant transform for reuse (note that detJ is the
-    # _signed_ (pseudo-)determinant)
-    transform_hdiv = (1.0 / detJ) * J
+    _ = flatten_domain_element(domain, element)
+    domain = tuple(d for d, e in _)
+    domain_geometric_objects_map = {}
+    for d in domain:
+        if d in domain_geometric_objects_map:
+            continue
+        J = Jacobian(d)
+        detJ = JacobianDeterminant(d)
+        Jinv = JacobianInverse(d)
+
+        # Create contravariant transform for reuse (note that detJ is the
+        # _signed_ (pseudo-)determinant)
+        transform_hdiv = (1.0 / detJ) * J
+        domain_geometric_objects_map[d] = (J, detJ, Jinv, transform_hdiv)
 
     # Shortcut simple cases for a more efficient representation,
     # including directly Piola-mapped elements and mixed elements of
     # any combination of affinely mapped elements without symmetries
     if mapping == "symmetries":
+        assert len(domain) == 1
+        J, detJ, Jinv, transform_hdiv = domain_geometric_objects_map[domain[0]]
         fcm = element.flattened_sub_element_mapping()
         assert gsize >= rsize
         assert len(fcm) == gsize
@@ -102,6 +124,8 @@ def apply_single_function_pullbacks(g):
         assert f.ufl_shape == g.ufl_shape
         return f
     elif mapping == "contravariant Piola":
+        assert len(domain) == 1
+        J, detJ, Jinv, transform_hdiv = domain_geometric_objects_map[domain[0]]
         assert transform_hdiv.ufl_shape == (gsize, rsize)
         i, j = indices(2)
         f = as_vector(transform_hdiv[i, j] * r[j], i)
@@ -109,6 +133,8 @@ def apply_single_function_pullbacks(g):
         assert f.ufl_shape == g.ufl_shape
         return f
     elif mapping == "covariant Piola":
+        assert len(domain) == 1
+        J, detJ, Jinv, transform_hdiv = domain_geometric_objects_map[domain[0]]
         assert Jinv.ufl_shape == (rsize, gsize)
         i, j = indices(2)
         f = as_vector(Jinv[j, i] * r[j], i)
@@ -116,16 +142,22 @@ def apply_single_function_pullbacks(g):
         assert f.ufl_shape == g.ufl_shape
         return f
     elif mapping == "double covariant Piola":
+        assert len(domain) == 1
+        J, detJ, Jinv, transform_hdiv = domain_geometric_objects_map[domain[0]]
         i, j, m, n = indices(4)
         f = as_tensor(Jinv[m, i] * r[m, n] * Jinv[n, j], (i, j))
         assert f.ufl_shape == g.ufl_shape
         return f
     elif mapping == "double contravariant Piola":
+        assert len(domain) == 1
+        J, detJ, Jinv, transform_hdiv = domain_geometric_objects_map[domain[0]]
         i, j, m, n = indices(4)
         f = as_tensor((1.0 / detJ) * (1.0 / detJ) * J[i, m] * r[m, n] * J[j, n], (i, j))
         assert f.ufl_shape == g.ufl_shape
         return f
     elif mapping == "L2 Piola":
+        assert len(domain) == 1
+        J, detJ, Jinv, transform_hdiv = domain_geometric_objects_map[domain[0]]
         assert rsh == gsh
         return r / detJ
 
@@ -145,7 +177,17 @@ def apply_single_function_pullbacks(g):
     rpos = 0
 
     r = as_vector([r[idx] for idx in numpy.ndindex(r.ufl_shape)])
-    for subelm in sub_elements_with_mappings(element):
+    subelements = sub_elements_with_mappings(element)
+    # Consistently deal with the case in which the Coefficient has
+    # a MixedElement, but is defined on a single domain.
+    if not g.mixed():
+        assert len(domain) == 1
+        domain = domain * len(subelements)
+    assert len(subelements) == len(domain)
+    for d, subelm in zip(domain, subelements):
+
+        J, detJ, Jinv, transform_hdiv = domain_geometric_objects_map[d]
+
         gm = product(subelm.value_shape())
         rm = product(subelm.reference_value_shape())
 

@@ -26,6 +26,9 @@ class ReferenceValue(Operator):
             error("Can only take reference value of form arguments.")
         Operator.__init__(self, (f,))
 
+    def ufl_domain(self):
+        return self.ufl_operands[0].ufl_domain()
+
     @property
     def ufl_shape(self):
         return self.ufl_operands[0].ufl_element().reference_value_shape()

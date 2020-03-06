@@ -192,11 +192,11 @@ def _build_coefficient_replace_map(coefficients, element_mapping=None):
         new_coefficients.append(new_f)
         replace_map[f] = new_f
 
-    for f in coefficients:
-        if f.mixed():
-            new_f = replace_map[f]
-            for sub_new, sub_old in zip(new_f, f):
-                replace_map[sub_old] = sub_new
+    #for f in coefficients:
+    #    if f.mixed():
+    #        new_f = replace_map[f]
+    #        for sub_new, sub_old in zip(new_f, f):
+    #            replace_map[sub_old] = sub_new
 
     return new_coefficients, replace_map
 
@@ -254,15 +254,9 @@ def compute_form_data(form,
     if complex_mode:
         form = do_comparison_check(form)
 
-
-
-    print("before:::", repr(form))
-    form = split_mixed_coefficients(form)
-
     # Lower abstractions for tensor-algebra types into index notation,
     # reducing the number of operators later algorithms and form
     # compilers need to handle
-    print("after:::", repr(form))
     form = apply_algebra_lowering(form)
 
     # After lowering to index notation, remove any complex nodes that
@@ -276,6 +270,12 @@ def compute_form_data(form,
     # after coefficients are rewritten, and in particular for
     # user-defined coefficient relations it just gets too messy
     form = apply_derivatives(form)
+
+
+
+    #print("before:::", repr(form))
+    #form = split_mixed_coefficients(form)
+    #print("after:::", repr(form))
 
     # --- Group form integrals
     # TODO: Refactor this, it's rather opaque what this does
@@ -319,6 +319,7 @@ def compute_form_data(form,
     # derivatives
     if do_apply_function_pullbacks or do_apply_geometry_lowering:
         form = apply_derivatives(form)
+        print("after  apply_derivatives::::", form)
 
         # Neverending story: apply_derivatives introduces new Jinvs,
         # which needs more geometry lowering
@@ -347,19 +348,20 @@ def compute_form_data(form,
             itg_coeffs.update(extract_coefficients(itg.integrand()))
         # Store with IntegralData object
         itg_data.integral_coefficients = []
-        itg_data.integral_coefficients_parts = {}
+        itg_data.integral_coefficients_parts = []
         for itg_coeff in itg_coeffs:
             parent = itg_coeff.parent
             if parent is None:
                 # Regular coefficient
                 itg_data.integral_coefficients.append(itg_coeff)
-                itg_data.integral_coefficients_parts[itg_coeff] = None
+                itg_data.integral_coefficients_parts.append(None)
             else:
                 # Component of a mixed coefficient
+                raise RuntimeError("mmm: this part shouldn't be called")
                 if parent not in itg_data.integral_coefficients:
                     itg_data.integral_coefficients.append(parent)
-                    itg_data.integral_coefficients_parts[parent] = set()
-                itg_data.integral_coefficients_parts[parent].update((parent.split().index(itg_coeff), ))
+                    itg_data.integral_coefficients_parts.append(set())
+                itg_data.integral_coefficients_parts[itg_data.integral_coefficients.index(parent)].update((parent.split().index(itg_coeff), ))
 
     # Figure out which coefficients from the original form are
     # actually used in any integral (Differentiation may reduce the

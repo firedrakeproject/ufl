@@ -361,13 +361,19 @@ def find_geometric_dimension(expr):
         if hasattr(t, "ufl_domain"):
             domain = t.ufl_domain()
             if domain is not None:
-                gdims.add(domain.geometric_dimension())
+                if not isinstance(domain, tuple):
+                    domain = (domain, )
+                for d in domain:
+                    gdims.add(d.geometric_dimension())
         if hasattr(t, "ufl_element"):
             element = t.ufl_element()
             if element is not None:
                 cell = element.cell()
                 if cell is not None:
-                    gdims.add(cell.geometric_dimension())
+                    if not isinstance(cell, tuple):
+                        cell = (cell, )
+                    for c in cell:
+                        gdims.add(c.geometric_dimension())
 
     if len(gdims) != 1:
         error("Cannot determine geometric dimension from expression.")

@@ -466,10 +466,13 @@ class Form(object):
         # among integration domains
         k = len(dn)
         for c in cn:
-            d = c.ufl_domain()
-            if d is not None and d not in renumbering:
-                renumbering[d] = k
-                k += 1
+            dd = c.ufl_domain()
+            if not isinstance(dd, tuple):
+                dd = (dd, )
+            for d in dd:
+                if d is not None and d not in renumbering:
+                    renumbering[d] = k
+                    k += 1
 
         # Add domains of arguments, these may include domains not
         # among integration domains
@@ -483,7 +486,12 @@ class Form(object):
                 if d is not None and d not in renumbering:
                     renumbering[d] = k
                     k += 1
-
+        from ufl.domain import Mesh
+        import sys
+        for k, i in renumbering.items():
+            if isinstance(k, Mesh):
+                print(k)
+                sys.stdout.flush()
         return renumbering
 
     def _compute_signature(self):

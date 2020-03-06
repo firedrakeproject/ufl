@@ -33,10 +33,12 @@ from ufl.operators import (conditional, sign,
                            cell_avg, facet_avg)
 
 from math import pi
+import numpy
 
 from ufl.corealg.multifunction import MultiFunction
 from ufl.corealg.map_dag import map_expr_dag
 from ufl.algorithms.map_integrands import map_integrand_dags
+from ufl.algorithms.apply_function_pullbacks import flatten_domain_element
 
 from ufl.checks import is_cellwise_constant
 from ufl.differentiation import CoordinateDerivative
@@ -542,10 +544,45 @@ class GradRuleset(GenericDerivativeRuleset):
         if not f._ufl_is_terminal_:
             error("ReferenceValue can only wrap a terminal")
         domain = f.ufl_domain()
-        K = JacobianInverse(domain)
-        r = indices(len(o.ufl_shape))
-        i, j = indices(2)
-        Do = as_tensor(K[j, i] * ReferenceGrad(o)[r + (j,)], r + (i,))
+        if isinstance(f, FormArgument) and f.mixed():
+            # MixedElement can be composed of elements
+            # of different reference dimensions, so
+            # we use the largest one to define the shape
+            # of the ReferenceGrad.
+            assert isinstance(domain, tuple)
+            element = f.ufl_function_space().ufl_element()
+            g = ReferenceGrad(o)
+            vsh = g.ufl_shape[:-1]
+            rdim0 = g.ufl_shape[-1]
+            components = []
+            dofoffset = 0
+            for d, e in flatten_domain_element(domain, element):
+                K = JacobianInverse(d)
+                esh = e.reference_value_shape()
+                if esh == ():
+                    esh = (1, )
+                assert esh[1:] == vsh[1:]
+                rdim, gdim = K.ufl_shape
+                assert rdim <= rdim0
+                assert gdim == self._var_shape[0]
+                for idx in numpy.ndindex(esh):
+                    eidx = list(idx)
+                    eidx[0] += dofoffset
+                    eidx = tuple(eidx)
+                    for i in range(gdim):
+                        temp = Zero()
+                        # Only sum over actual reference dimension.
+                        # g.ufl_shape[-1] >= K.ufl_shape[0] (= rdim)
+                        for j in range(rdim):
+                            temp += g[eidx + (j, )] * K[j, i]
+                        components.append(temp)
+                dofoffset += esh[0]
+            Do = as_tensor(numpy.asarray(components).reshape(vsh + self._var_shape))
+        else:
+            K = JacobianInverse(domain)
+            r = indices(len(o.ufl_shape))
+            i, j = indices(2)
+            Do = as_tensor(K[j, i] * ReferenceGrad(o)[r + (j,)], r + (i,))
         return Do
 
     def reference_grad(self, o):

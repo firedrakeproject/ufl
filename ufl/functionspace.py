@@ -76,10 +76,10 @@ class FunctionSpace(AbstractFunctionSpace):
 
     def ufl_domains(self):
         "Return ufl domains."
-        if self.mixed():
-            raise NotImplementedError("mmm: not sure what to do with ufl_domains")
         domain = self.ufl_domain()
-        if domain is None:
+        if self.mixed():
+            return domain
+        elif domain is None:
             return ()
         else:
             return (domain,)

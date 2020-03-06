@@ -189,7 +189,15 @@ class ReferenceGrad(CompoundDerivative):
 
     def __init__(self, f):
         CompoundDerivative.__init__(self, (f,))
-        self._dim = f.ufl_domain().topological_dimension()
+        domain = f.ufl_domain()
+        if isinstance(domain, tuple):
+            # Set _dim to the max. topological dimension and
+            # pad Zero() where appropriate.
+            a = tuple(d.topological_dimension() for d in domain)
+            print("max dim :", a)
+            self._dim = max(a)
+        else:
+            self._dim = domain.topological_dimension()
 
     def _ufl_expr_reconstruct_(self, op):
         "Return a new object of the same type with new operands."
