@@ -82,6 +82,8 @@ class Form(object):
         "_coefficients",
         "_coefficient_numbering",
         "_constants",
+        "_filters",
+        "_filter_numbering",
         "_hash",
         "_signature",
         # --- Dict that external frameworks can place framework-specific
@@ -114,6 +116,10 @@ class Form(object):
 
         from ufl.algorithms.analysis import extract_constants
         self._constants = extract_constants(self)
+
+        # Internal variables for caching filter data
+        self._filters = None
+        self._filter_numbering = None
 
         # Internal variables for caching of hash and signature after
         # first request
@@ -236,6 +242,19 @@ class Form(object):
 
     def constants(self):
         return self._constants
+
+    def filters(self):
+        "Return all ``Filter`` objects found in form."
+        if self._filters is None:
+            self._analyze_filters()
+        return self._filters
+
+    def filter_numbering(self):
+        """Return a contiguous numbering of filters in a mapping
+        ``{filter:number}``."""
+        if self._filter_numbering is None:
+            self._analyze_filters()
+        return self._filter_numbering
 
     def signature(self):
         "Signature for use with jit cache (independent of incidental numbering of indices etc.)"
@@ -454,13 +473,26 @@ class Form(object):
         self._coefficient_numbering = dict(
             (c, i) for i, c in enumerate(self._coefficients))
 
+    def _analyze_filters(self):
+        "Analyze which Filter objects can be found in the form."
+        from ufl.algorithms.analysis import extract_filters
+        filters = extract_filters(self)
+
+        # Define canonical numbering of filters
+        self._filters = tuple(
+            sorted(set(filters), key=lambda x: x.count()))
+        self._filter_numbering = dict(
+            (f, i) for i, f in enumerate(self._filters))
+
     def _compute_renumbering(self):
-        # Include integration domains and coefficients in renumbering
+        # Include integration domains, coefficients, and filters in renumbering
         dn = self.domain_numbering()
         cn = self.coefficient_numbering()
+        fn = self.filter_numbering()
         renumbering = {}
         renumbering.update(dn)
         renumbering.update(cn)
+        renumbering.update(fn)
 
         # Add domains of coefficients, these may include domains not
         # among integration domains
@@ -478,6 +510,10 @@ class Form(object):
             if d is not None and d not in renumbering:
                 renumbering[d] = k
                 k += 1
+
+        # Add ufl_domain to filters?
+        # Multiindex does not have ufl_domain, so Filter probably
+        # does not need one either.
 
         return renumbering
 

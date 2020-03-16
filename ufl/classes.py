@@ -32,11 +32,13 @@ import ufl.core.operator
 import ufl.constantvalue
 import ufl.argument
 import ufl.coefficient
+import ufl.filter
 import ufl.geometry
 
 # Operator types
 import ufl.averaging
 import ufl.indexed
+import ufl.filtered
 import ufl.indexsum
 import ufl.variable
 import ufl.tensors

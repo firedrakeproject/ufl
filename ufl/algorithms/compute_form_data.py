@@ -14,9 +14,9 @@ from itertools import chain
 from ufl.log import error, info
 from ufl.utils.sequences import max_degree
 
-from ufl.classes import GeometricFacetQuantity, Coefficient, Form, FunctionSpace
+from ufl.classes import GeometricFacetQuantity, Coefficient, Filter, Form, FunctionSpace
 from ufl.corealg.traversal import traverse_unique_terminals
-from ufl.algorithms.analysis import extract_coefficients, extract_sub_elements, unique_tuple
+from ufl.algorithms.analysis import extract_coefficients, extract_filters, extract_sub_elements, unique_tuple
 from ufl.algorithms.formdata import FormData
 from ufl.algorithms.formtransformations import compute_form_arities
 from ufl.algorithms.check_arities import check_form_arity
@@ -28,6 +28,7 @@ from ufl.algorithms.apply_derivatives import apply_derivatives, apply_coordinate
 from ufl.algorithms.apply_integral_scaling import apply_integral_scaling
 from ufl.algorithms.apply_geometry_lowering import apply_geometry_lowering
 from ufl.algorithms.apply_restrictions import apply_restrictions, apply_default_restrictions
+from ufl.algorithms.apply_filters import apply_filters
 from ufl.algorithms.estimate_degrees import estimate_total_polynomial_degree
 from ufl.algorithms.remove_complex_nodes import remove_complex_nodes
 from ufl.algorithms.comparison_checker import do_comparison_check
@@ -61,7 +62,8 @@ def _compute_element_mapping(form):
 
     # Extract all elements and include subelements of mixed elements
     elements = [obj.ufl_element() for obj in chain(form.arguments(),
-                                                   form.coefficients())]
+                                                   form.coefficients(),
+                                                   form.filters())]
     elements = extract_sub_elements(elements)
 
     # Try to find a common degree for elements
@@ -115,9 +117,10 @@ def _compute_max_subdomain_ids(integral_data):
     return max_subdomain_ids
 
 
-def _compute_form_data_elements(self, arguments, coefficients, domains):
+def _compute_form_data_elements(self, arguments, coefficients, filters, domains):
     self.argument_elements = tuple(f.ufl_element() for f in arguments)
     self.coefficient_elements = tuple(f.ufl_element() for f in coefficients)
+    self.filter_elements = tuple(f.ufl_element() for f in filters)
     self.coordinate_elements = tuple(domain.ufl_coordinate_element() for domain in domains)
 
     # TODO: Include coordinate elements from argument and coefficient
@@ -129,7 +132,7 @@ def _compute_form_data_elements(self, arguments, coefficients, domains):
     #       almost working, with the introduction of the coordinate
     #       elements here.
 
-    all_elements = self.argument_elements + self.coefficient_elements + self.coordinate_elements
+    all_elements = self.argument_elements + self.coefficient_elements + self.filter_elements+ self.coordinate_elements
     all_sub_elements = extract_sub_elements(all_elements)
 
     self.unique_elements = unique_tuple(all_elements)
@@ -169,16 +172,16 @@ def _check_form_arity(preprocessed_form):
         error("All terms in form must have same rank.")
 
 
-def _build_coefficient_replace_map(coefficients, element_mapping=None):
-    """Create new Coefficient objects
+def _build_replace_map(cls, objects, element_mapping=None):
+    """Create new cls (Coefficient/Filter) objects
     with count starting at 0. Return mapping from old
     to new objects, and lists of the new objects."""
     if element_mapping is None:
         element_mapping = {}
 
-    new_coefficients = []
+    new_objects = []
     replace_map = {}
-    for i, f in enumerate(coefficients):
+    for i, f in enumerate(objects):
         old_e = f.ufl_element()
         new_e = element_mapping.get(old_e, old_e)
         # XXX: This is a hack to ensure that if the original
@@ -187,11 +190,11 @@ def _build_coefficient_replace_map(coefficients, element_mapping=None):
         # always have a domain.
         if f.ufl_domain() is not None:
             new_e = FunctionSpace(f.ufl_domain(), new_e)
-        new_f = Coefficient(new_e, count=i)
-        new_coefficients.append(new_f)
+        new_f = cls(new_e, count=i)
+        new_objects.append(new_f)
         replace_map[f] = new_f
 
-    return new_coefficients, replace_map
+    return new_objects, replace_map
 
 
 def attach_estimated_degrees(form):
@@ -220,6 +223,7 @@ def compute_form_data(form,
                       preserve_geometry_types=(),
                       do_apply_default_restrictions=True,
                       do_apply_restrictions=True,
+                      do_apply_filters=True,
                       do_estimate_degrees=True,
                       do_append_everywhere_integrals=True,
                       complex_mode=False,
@@ -320,38 +324,54 @@ def compute_form_data(form,
     if do_apply_restrictions:
         form = apply_restrictions(form)
 
+    # Propagate filters to reference values
+    if do_apply_filters:
+        form = apply_filters(form)
+
     # --- Group integrals into IntegralData objects
     # Most of the heavy lifting is done above in group_form_integrals.
     self.integral_data = build_integral_data(form.integrals())
 
     # --- Create replacements for arguments and coefficients
 
-    # Figure out which form coefficients each integral should enable
+    # Figure out which form coefficients/filters each integral should enable
     for itg_data in self.integral_data:
         itg_coeffs = set()
-        # Get all coefficients in integrand
+        itg_fltrs = set()
+        # Get all coefficients/filters in integrand
         for itg in itg_data.integrals:
             itg_coeffs.update(extract_coefficients(itg.integrand()))
+            itg_fltrs.update(extract_filters(itg.integrand()))
         # Store with IntegralData object
         itg_data.integral_coefficients = itg_coeffs
+        itg_data.integral_filters = itg_fltrs
 
-    # Figure out which coefficients from the original form are
+    # Figure out which coefficients/filters from the original form are
     # actually used in any integral (Differentiation may reduce the
     # set of coefficients w.r.t. the original form)
     reduced_coefficients_set = set()
+    reduced_filters_set = set()
     for itg_data in self.integral_data:
         reduced_coefficients_set.update(itg_data.integral_coefficients)
+        reduced_filters_set.update(itg_data.integral_filters)
     self.reduced_coefficients = sorted(reduced_coefficients_set,
                                        key=lambda c: c.count())
+    self.reduced_filters = sorted(reduced_filters_set,
+                                  key=lambda c: c.count())
     self.num_coefficients = len(self.reduced_coefficients)
+    self.num_filters = len(self.reduced_filters)
     self.original_coefficient_positions = [i for i, c in enumerate(self.original_form.coefficients())
                                            if c in self.reduced_coefficients]
+    self.original_filter_positions = [i for i, c in enumerate(self.original_form.filters())
+                                           if c in self.reduced_filters]
 
-    # Store back into integral data which form coefficients are used
+    # Store back into integral data which form coefficients/filters are used
     # by each integral
     for itg_data in self.integral_data:
         itg_data.enabled_coefficients = [bool(coeff in itg_data.integral_coefficients)
                                          for coeff in self.reduced_coefficients]
+        itg_data.enabled_filters = [bool(fltr in itg_data.integral_filters)
+                                    for fltr in self.reduced_filters]
 
     # --- Collect some trivial data
 
@@ -376,15 +396,21 @@ def compute_form_data(form,
     # objects with canonical numbering as well as completed cells and
     # elements
     renumbered_coefficients, function_replace_map = \
-        _build_coefficient_replace_map(self.reduced_coefficients,
+        _build_replace_map(Coefficient, self.reduced_coefficients,
                                        self.element_replace_map)
     self.function_replace_map = function_replace_map
+
+    renumbered_filters, filter_replace_map = \
+        _build_replace_map(Filter, self.reduced_filters,
+                                  self.element_replace_map)
+    self.filter_replace_map = filter_replace_map
 
     # --- Store various lists of elements and sub elements (adds
     #     members to self)
     _compute_form_data_elements(self,
                                 self.original_form.arguments(),
                                 renumbered_coefficients,
+                                renumbered_filters,
                                 self.original_form.ufl_domains())
 
     # --- Store number of domains for integral types

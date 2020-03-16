@@ -124,6 +124,9 @@ class SumDegreeEstimator(MultiFunction):
     def multi_index(self, v):
         return None
 
+    def filter(self, v):
+        return None
+
     def label(self, v):
         return None
 
@@ -141,6 +144,9 @@ class SumDegreeEstimator(MultiFunction):
         return A
 
     def indexed(self, v, A, ii):
+        return A
+
+    def filtered(self, v, A, fltr):
         return A
 
     def component_tensor(self, v, A, ii):

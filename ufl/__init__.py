@@ -106,6 +106,10 @@ A very brief overview of the language contents follows:
     - VectorConstant
     - TensorConstant
 
+* Filter::
+
+    - Filter
+
 * Splitting form arguments in mixed spaces::
 
     - split
@@ -302,6 +306,12 @@ from ufl.constantvalue import PermutationSymbol, Identity, zero, as_ufl
 # Indexing of tensor expressions
 from ufl.core.multiindex import Index, indices
 
+# Filtered
+from ufl.filtered import Filtered
+
+# Filter
+from ufl.filter import Filter
+
 # Special functions for expression base classes
 # (ensure this is imported, since it attaches operators to Expr)
 import ufl.exproperators as __exproperators
@@ -385,6 +395,8 @@ __all__ = [
     'Arguments', 'TestFunctions', 'TrialFunctions',
     'Coefficient', 'Coefficients',
     'Constant', 'VectorConstant', 'TensorConstant',
+    'Filter',
+    'Filtered',
     'split',
     'PermutationSymbol', 'Identity', 'zero', 'as_ufl',
     'Index', 'indices',
