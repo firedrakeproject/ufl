@@ -57,6 +57,7 @@ A very brief overview of the language contents follows:
 * Domains::
 
     - AbstractDomain
+    - TopologicalMesh
     - Mesh
     - MeshView
     - TensorProductMesh
@@ -87,6 +88,7 @@ A very brief overview of the language contents follows:
 
 * Function spaces::
 
+    - TopologicalFunctionSpace
     - FunctionSpace
     - MixedFunctionSpace
 
@@ -264,7 +266,7 @@ from ufl.log import get_handler, get_logger, set_handler, set_level, add_logfile
 # Types for geometric quantities
 
 from ufl.cell import as_cell, AbstractCell, Cell, TensorProductCell
-from ufl.domain import as_domain, AbstractDomain, Mesh, MeshView, TensorProductMesh
+from ufl.domain import as_domain, AbstractDomain, TopologicalMesh, Mesh, MeshView, TensorProductMesh
 from ufl.geometry import (
     SpatialCoordinate,
     FacetNormal, CellNormal,
@@ -287,7 +289,7 @@ from ufl.finiteelement import FiniteElementBase, FiniteElement, \
 from ufl.finiteelement.elementlist import register_element, show_elements  # , ufl_elements
 
 # Function spaces
-from ufl.functionspace import FunctionSpace, MixedFunctionSpace
+from ufl.functionspace import TopologicalFunctionSpace, FunctionSpace, MixedFunctionSpace
 
 # Arguments
 from ufl.argument import Argument, TestFunction, TrialFunction, \
@@ -376,7 +378,7 @@ __all__ = [
     'get_handler', 'get_logger', 'set_handler', 'set_level', 'add_logfile',
     'UFLException', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL',
     'as_cell', 'AbstractCell', 'Cell', 'TensorProductCell',
-    'as_domain', 'AbstractDomain', 'Mesh', 'MeshView', 'TensorProductMesh',
+    'as_domain', 'AbstractDomain', 'TopologicalMesh', 'Mesh', 'MeshView', 'TensorProductMesh',
     'L2', 'H1', 'H2', 'HCurl', 'HDiv',
     'SpatialCoordinate',
     'CellVolume', 'CellDiameter', 'Circumradius',
@@ -390,7 +392,7 @@ __all__ = [
     'HDivElement', 'HCurlElement',
     'BrokenElement', 'FacetElement', 'InteriorElement',
     'register_element', 'show_elements',
-    'FunctionSpace', 'MixedFunctionSpace',
+    'TopologicalFunctionSpace', 'FunctionSpace', 'MixedFunctionSpace',
     'Argument', 'TestFunction', 'TrialFunction',
     'Arguments', 'TestFunctions', 'TrialFunctions',
     'Coefficient', 'Coefficients',

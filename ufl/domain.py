@@ -23,7 +23,7 @@ from ufl.finiteelement.tensorproductelement import TensorProductElement
 
 
 # Export list for ufl.classes
-__all_classes__ = ["AbstractDomain", "Mesh", "MeshView", "TensorProductMesh"]
+__all_classes__ = ["AbstractDomain", "TopologicalMesh", "Mesh", "MeshView", "TensorProductMesh"]
 
 
 class AbstractDomain(object):
@@ -59,6 +59,63 @@ class AbstractDomain(object):
 # class EuclideanSpace(AbstractDomain):
 #     def __init__(self, geometric_dimension):
 #         AbstractDomain.__init__(self, geometric_dimension, geometric_dimension)
+
+
+@attach_operators_from_hash_data
+@attach_ufl_id
+class TopologicalMesh(AbstractDomain):
+    """Symbolic representation of a topological mesh."""
+
+    def __init__(self, cell, ufl_id=None, cargo=None):
+        self._ufl_id = self._init_ufl_id(ufl_id)
+
+        # Store reference to object that will not be used by UFL
+        self._ufl_cargo = cargo
+        if cargo is not None and cargo.ufl_id() != self._ufl_id:
+            error("Expecting cargo object (e.g. dolfin.Mesh) to have the same ufl_id.")
+
+        assert isinstance(cell, AbstractCell), "Must be an instance of AbstractCell."
+
+        # Derive dimensions from element
+        gdim = cell.geometric_dimension()
+        tdim = cell.topological_dimension()
+        AbstractDomain.__init__(self, tdim, gdim)
+
+        # Store cell
+        self._ufl_cell = cell
+
+    def ufl_cargo(self):
+        "Return carried object that will not be used by UFL."
+        return self._ufl_cargo
+
+    def ufl_coordinate_element(self):
+        error("This method must not be called on TopologicalMesh.")
+
+    def ufl_cell(self):
+        return self._ufl_cell
+
+    def is_piecewise_linear_simplex_domain(self):
+        error("This method must not be called on TopologicalMesh.")
+
+    def __repr__(self):
+        r = "TopologicalMesh(%s, %s)" % (repr(self._ufl_cell), repr(self._ufl_id))
+        return r
+
+    def __str__(self):
+        return "<TopologicalMesh #%s>" % (self._ufl_id,)
+
+    def _ufl_hash_data_(self):
+        return (self._ufl_id, self._ufl_cell)
+
+    def _ufl_signature_data_(self, renumbering):
+        return ("TopologicalMesh", renumbering[self], self._ufl_cell)
+
+    # NB! Dropped __lt__ here, don't want users to write 'mesh1 <
+    # mesh2'.
+    def _ufl_sort_key_(self):
+        typespecific = (self._ufl_id, self._ufl_cell)
+        return (self.geometric_dimension(), self.topological_dimension(),
+                "TopologicalMesh", typespecific)
 
 
 @attach_operators_from_hash_data
