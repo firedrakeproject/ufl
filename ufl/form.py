@@ -82,8 +82,8 @@ class Form(object):
         "_coefficients",
         "_coefficient_numbering",
         "_constants",
-        "_filters",
-        "_filter_numbering",
+        "_topological_coefficients",
+        "_topological_coefficient_numbering",
         "_hash",
         "_signature",
         # --- Dict that external frameworks can place framework-specific
@@ -117,9 +117,9 @@ class Form(object):
         from ufl.algorithms.analysis import extract_constants
         self._constants = extract_constants(self)
 
-        # Internal variables for caching filter data
-        self._filters = None
-        self._filter_numbering = None
+        # Internal variables for caching topological coefficient data
+        self._topological_coefficients = None
+        self._topological_coefficient_numbering = None
 
         # Internal variables for caching of hash and signature after
         # first request
@@ -243,18 +243,18 @@ class Form(object):
     def constants(self):
         return self._constants
 
-    def filters(self):
-        "Return all ``Filter`` objects found in form."
-        if self._filters is None:
-            self._analyze_filters()
-        return self._filters
+    def topological_coefficients(self):
+        "Return all ``TopologicalCoefficient`` objects found in form."
+        if self._topological_coefficients is None:
+            self._analyze_topological_coefficients()
+        return self._topological_coefficients
 
-    def filter_numbering(self):
-        """Return a contiguous numbering of filters in a mapping
-        ``{filter:number}``."""
-        if self._filter_numbering is None:
-            self._analyze_filters()
-        return self._filter_numbering
+    def topological_coefficient_numbering(self):
+        """Return a contiguous numbering of topological coefficients in a mapping
+        ``{topological_coefficient:number}``."""
+        if self._topological_coefficient_numbering is None:
+            self._analyze_topological_coefficients()
+        return self._topological_coefficient_numbering
 
     def signature(self):
         "Signature for use with jit cache (independent of incidental numbering of indices etc.)"
@@ -473,22 +473,22 @@ class Form(object):
         self._coefficient_numbering = dict(
             (c, i) for i, c in enumerate(self._coefficients))
 
-    def _analyze_filters(self):
-        "Analyze which Filter objects can be found in the form."
-        from ufl.algorithms.analysis import extract_filters
-        filters = extract_filters(self)
+    def _analyze_topological_coefficients(self):
+        "Analyze which TopologicalCoefficient objects can be found in the form."
+        from ufl.algorithms.analysis import extract_topological_coefficients
+        topo_coeffs = extract_topological_coefficients(self)
 
-        # Define canonical numbering of filters
-        self._filters = tuple(
-            sorted(set(filters), key=lambda x: x.count()))
-        self._filter_numbering = dict(
-            (f, i) for i, f in enumerate(self._filters))
+        # Define canonical numbering of topological coefficients
+        self._topological_coefficients = tuple(
+            sorted(set(topo_coeffs), key=lambda x: x.count()))
+        self._topological_coefficient_numbering = dict(
+            (f, i) for i, f in enumerate(self._topological_coefficients))
 
     def _compute_renumbering(self):
-        # Include integration domains, coefficients, and filters in renumbering
+        # Include integration domains, coefficients, and topological coefficients in renumbering
         dn = self.domain_numbering()
         cn = self.coefficient_numbering()
-        fn = self.filter_numbering()
+        fn = self.topological_coefficient_numbering()
         renumbering = {}
         renumbering.update(dn)
         renumbering.update(cn)

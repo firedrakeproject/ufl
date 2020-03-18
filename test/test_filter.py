@@ -43,11 +43,11 @@ def test_filter_one_form():
     #print(itgd.ufl_free_indices)
     print(fd)
     print(repr(fd.integral_data[0].integrals[0].integrand()))
-    assert fd.num_filters == 1
-    assert fd.reduced_filters[0] is fltr
-    assert fd.original_filter_positions == [0, ]
-    assert fd.integral_data[0].integral_filters == set((fltr, ))
-    assert fd.integral_data[0].enabled_filters == [True, ]
+    assert fd.num_topological_coefficients == 1
+    assert fd.reduced_topological_coefficients[0] is fltr
+    assert fd.original_topological_coefficient_positions == [0, ]
+    assert fd.integral_data[0].integral_topological_coefficients == set((fltr, ))
+    assert fd.integral_data[0].enabled_topological_coefficients == [True, ]
     """
     mesh = Mesh(VectorElement(FiniteElement('Lagrange', triangle, 1), dim=2), 3)
     FS = FunctionSpace(mesh, FiniteElement('Lagrange', triangle, 1))

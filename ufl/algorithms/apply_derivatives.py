@@ -17,7 +17,7 @@ from ufl.core.multiindex import MultiIndex, FixedIndex, indices
 from ufl.tensors import as_tensor, as_scalar, as_scalars, unit_indexed_tensor, unwrap_list_tensor
 
 from ufl.classes import ConstantValue, Identity, Zero, FloatValue
-from ufl.classes import Coefficient, FormArgument, ReferenceValue, Filter
+from ufl.classes import Coefficient, FormArgument, ReferenceValue
 from ufl.classes import Grad, ReferenceGrad, Variable
 from ufl.classes import Indexed, ListTensor, ComponentTensor
 from ufl.classes import Filtered
@@ -84,7 +84,7 @@ class GenericDerivativeRuleset(MultiFunction):
         return o
     label = non_differentiable_terminal
     multi_index = non_differentiable_terminal
-    filter = non_differentiable_terminal
+    topological_coefficient = non_differentiable_terminal
 
     # --- Helper functions for creating zeros with the right shapes
 

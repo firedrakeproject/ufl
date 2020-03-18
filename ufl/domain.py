@@ -304,6 +304,7 @@ def affine_mesh(cell, ufl_id=None):
 
 
 _default_domains = {}
+_default_topological_domains = {}
 
 
 def default_domain(cell):
@@ -320,6 +321,23 @@ def default_domain(cell):
         ufl_id = -(len(_default_domains) + 1)
         domain = affine_mesh(cell, ufl_id=ufl_id)
         _default_domains[cell] = domain
+    return domain
+
+
+def default_topological_domain(cell):
+    """Create a singular default TopologicalMesh from a cell, always returning the
+    same TopologicalMesh object for the same cell.
+
+    """
+    global _default_topological_domains
+    assert isinstance(cell, AbstractCell)
+    domain = _default_topological_domains.get(cell)
+    if domain is None:
+        # Create one and only one affine TopologicalMesh with a negative ufl_id
+        # to avoid id collision
+        ufl_id = -(len(_default_topological_domains) + 1)
+        domain = TopologicalMesh(cell, ufl_id=ufl_id)
+        _default_topological_domains[cell] = domain
     return domain
 
 

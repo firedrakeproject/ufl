@@ -16,7 +16,7 @@ from ufl.log import error
 from ufl.core.ufl_type import ufl_type
 from ufl.core.terminal import Terminal, FormArgument
 from ufl.finiteelement import FiniteElementBase
-from ufl.domain import default_domain
+from ufl.domain import default_domain, default_topological_domain
 from ufl.functionspace import AbstractFunctionSpace, FunctionSpace, MixedFunctionSpace, TopologicalFunctionSpace
 from ufl.split_functions import split
 from ufl.utils.counted import counted_init
@@ -129,16 +129,22 @@ class TopologicalCoefficient(Terminal):
 
     def __init__(self, function_space, count=None):
         Terminal.__init__(self)
-        counted_init(self, count, self.__class__)
+        counted_init(self, count, TopologicalCoefficient)
 
-        if not isinstance(function_space, TopologicalFunctionSpace):
+        if isinstance(function_space, FiniteElementBase):
+            # For legacy support for .ufl files using cells, we map
+            # the cell to The Default Mesh
+            element = function_space
+            domain = default_topological_domain(element.cell())
+            function_space = TopologicalFunctionSpace(domain, element)
+        elif not isinstance(function_space, TopologicalFunctionSpace):
             error("Expecting a TopologicalFunctionSpace.")
 
         self._ufl_function_space = function_space
         self._ufl_shape = function_space.ufl_element().value_shape()
 
-        self._repr = "%s(%s, %s)" % (
-            self.__class__.__name__, repr(self._ufl_function_space), repr(self._count))
+        self._repr = "TopologicalCoefficient(%s, %s)" % (
+            repr(self._ufl_function_space), repr(self._count))
 
     def count(self):
         return self._count
@@ -198,7 +204,6 @@ class Filter(TopologicalCoefficient):
     """UFL terminal type: Representation of a filter."""
 
     __slots__ = ()
-    _globalcount = 0
 
     def is_cellwise_constant(self):
         "Always True."

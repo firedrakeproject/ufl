@@ -73,6 +73,11 @@ class SumDegreeEstimator(MultiFunction):
             d = self.default_degree
         return d
 
+    def topological_coefficient(self, v):
+        """A topological coefficient has no underlying geometry, and
+        must not be used in a way that it would contribute to the degree."""
+        return None
+
     def _reduce_degree(self, v, f):
         """Reduces the estimated degree by one; used when derivatives
         are taken. Does not reduce the degree when TensorProduct elements
@@ -122,9 +127,6 @@ class SumDegreeEstimator(MultiFunction):
 
     # Utility types with no degree concept
     def multi_index(self, v):
-        return None
-
-    def filter(self, v):
         return None
 
     def label(self, v):

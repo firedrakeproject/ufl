@@ -37,8 +37,8 @@ class FormData(object):
             ("Number of coefficients", self.num_coefficients),
             ("Coefficients", lstr(self.reduced_coefficients)),
             # Filters
-            ("Number of filters", self.num_filters),
-            ("Filters", lstr(self.reduced_filters)),
+            ("Number of topological coefficients", self.num_topological_coefficients),
+            ("Topological coefficients", lstr(self.reduced_topological_coefficients)),
             # Elements
             ("Unique elements", estr(self.unique_elements)),
             ("Unique sub elements", estr(self.unique_sub_elements)),

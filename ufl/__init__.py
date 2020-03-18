@@ -309,9 +309,6 @@ from ufl.core.multiindex import Index, indices
 # Filtered
 from ufl.filtered import Filtered
 
-# Filter
-#from ufl.filter import Filter
-
 # Special functions for expression base classes
 # (ensure this is imported, since it attaches operators to Expr)
 import ufl.exproperators as __exproperators
