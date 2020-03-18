@@ -124,8 +124,7 @@ def Coefficients(function_space):
 class TopologicalCoefficient(Terminal):
     """UFL terminal type: Representation of a topological coefficient."""
 
-    # __slots__ = ("_count", "_ufl_function_space", "_repr", "_ufl_shape")
-    _ufl_noslots_ = True
+    __slots__ = ("_count", "_ufl_function_space", "_repr", "_ufl_shape")
     _globalcount = 0
 
     def __init__(self, function_space, count=None):
@@ -198,7 +197,7 @@ class TopologicalCoefficient(Terminal):
 class Filter(TopologicalCoefficient):
     """UFL terminal type: Representation of a filter."""
 
-    _ufl_noslots_ = True
+    __slots__ = ()
     _globalcount = 0
 
     def is_cellwise_constant(self):
