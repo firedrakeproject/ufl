@@ -197,21 +197,3 @@ class TopologicalCoefficient(Terminal):
             return True
         return (self._count == other._count and
                 self._ufl_function_space == other._ufl_function_space)
-
-
-@ufl_type()
-class Filter(TopologicalCoefficient):
-    """UFL terminal type: Representation of a filter."""
-
-    __slots__ = ()
-
-    def is_cellwise_constant(self):
-        "Always True."
-        return True
-
-    def __str__(self):
-        count = str(self._count)
-        if len(count) == 1:
-            return "filter_%s" % count
-        else:
-            return "filter_{%s}" % count

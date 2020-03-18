@@ -16,7 +16,7 @@ def test_filter_one_form():
 
     t_domain = TopologicalMesh(cell)
     t_V = TopologicalFunctionSpace(t_domain, element)
-    fltr = Filter(t_V)
+    fltr = TopologicalCoefficient(t_V)
 
     filtered_v = Filtered(v, fltr)
     form = inner(c, grad(filtered_v[1])) * dx
@@ -78,7 +78,7 @@ def test_filter_one_form():
                     ReferenceGrad(
                       Filtered(
                         ReferenceValue(Argument(FunctionSpace(mesh, VectorElement(FiniteElement('Lagrange', triangle, 1), dim=2)), 0, None)), 
-                        Filter(TopologicalFunctionSpace(TopologicalMesh(triangle, 0), VectorElement(FiniteElement('Lagrange', triangle, 1), dim=2)), 0)
+                        TopologicalCoefficient(TopologicalFunctionSpace(TopologicalMesh(triangle, 0), VectorElement(FiniteElement('Lagrange', triangle, 1), dim=2)), 0)
                       )
                     ), MultiIndex((Index(101), Index(103)))
                   )

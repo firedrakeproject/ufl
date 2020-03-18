@@ -27,7 +27,7 @@ class FilterRuleset(MultiFunction):
     expr = MultiFunction.reuse_if_untouched
 
     def reference_value(self, o):
-        "Filter must act directly on reference value of argument objects."
+        "Must act directly on reference value of argument objects."
         f, = o.ufl_operands
         assert f._ufl_is_terminal_
         assert isinstance(f, Argument)
