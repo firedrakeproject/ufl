@@ -511,9 +511,12 @@ class Form(object):
                 renumbering[d] = k
                 k += 1
 
-        # Add ufl_domain to filters?
-        # Multiindex does not have ufl_domain, so Filter probably
-        # does not need one either.
+        # Add topological domains of topological coefficients
+        for c in fn:
+            d = c.ufl_domain()
+            if d is not None and d not in renumbering:
+                renumbering[d] = k
+                k += 1
 
         return renumbering
 

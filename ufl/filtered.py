@@ -16,7 +16,7 @@ from ufl.core.multiindex import Index, FixedIndex, MultiIndex
 from ufl.argument import Argument
 from ufl.index_combination_utils import unique_sorted_indices, merge_unique_indices
 from ufl.precedence import parstr
-from ufl.filter import Filter
+from ufl.coefficient import Filter
 
 # --- Indexed expression ---
 

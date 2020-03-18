@@ -1,7 +1,7 @@
 import pytest
 from ufl import *
 from ufl.algorithms.formsplitter import extract_blocks
-from ufl.algorithms import compute_form_data as ufl_compute_form_data
+from ufl.algorithms import compute_form_data
 from ufl.differentiation import ReferenceGrad
 
 
@@ -14,13 +14,15 @@ def test_filter_one_form():
     v = TestFunction(V)
     c = Coefficient(V)
 
-    fltr = Filter(V)
+    t_domain = TopologicalMesh(cell)
+    t_V = TopologicalFunctionSpace(t_domain, element)
+    fltr = Filter(t_V)
 
     filtered_v = Filtered(v, fltr)
     form = inner(c, grad(filtered_v[1])) * dx
     # form = inner(c, grad(filtered_v)[1,:]) * dx
 
-    fd = ufl_compute_form_data(
+    fd = compute_form_data(
         form,
         do_apply_function_pullbacks=True,
         do_apply_integral_scaling=True,
@@ -67,12 +69,7 @@ def test_filter_one_form():
                   Indexed(
                     ComponentTensor(
                       Division(
-                        Indexed(
-                          ListTensor(
-                            ListTensor(F11, Product(IntValue(-1), F01)), 
-                            ListTensor(Product(IntValue(-1), F10), F00)
-                          ), MultiIndex((Index(104), Index(105)))
-                        ), 
+                        Indexed(ListTensor(ListTensor(F11, Product(IntValue(-1), F01)), ListTensor(Product(IntValue(-1), F10), F00)), MultiIndex((Index(104), Index(105)))), 
                         Sum(Product(F00, F11), Product(IntValue(-1), Product(F01, F10)))
                       ), MultiIndex((Index(104), Index(105)))
                     ), MultiIndex((Index(103), Index(102)))
@@ -81,7 +78,7 @@ def test_filter_one_form():
                     ReferenceGrad(
                       Filtered(
                         ReferenceValue(Argument(FunctionSpace(mesh, VectorElement(FiniteElement('Lagrange', triangle, 1), dim=2)), 0, None)), 
-                        Filter(FunctionSpace(mesh, VectorElement(FiniteElement('Lagrange', triangle, 1), dim=2)), 0)
+                        Filter(TopologicalFunctionSpace(TopologicalMesh(triangle, 0), VectorElement(FiniteElement('Lagrange', triangle, 1), dim=2)), 0)
                       )
                     ), MultiIndex((Index(101), Index(103)))
                   )

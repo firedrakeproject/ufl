@@ -107,9 +107,7 @@ A very brief overview of the language contents follows:
     - Constant
     - VectorConstant
     - TensorConstant
-
-* Filter::
-
+    - TopologicalCoefficient
     - Filter
 
 * Splitting form arguments in mixed spaces::
@@ -289,14 +287,14 @@ from ufl.finiteelement import FiniteElementBase, FiniteElement, \
 from ufl.finiteelement.elementlist import register_element, show_elements  # , ufl_elements
 
 # Function spaces
-from ufl.functionspace import TopologicalFunctionSpace, FunctionSpace, MixedFunctionSpace
+from ufl.functionspace import FunctionSpace, MixedFunctionSpace, TopologicalFunctionSpace
 
 # Arguments
 from ufl.argument import Argument, TestFunction, TrialFunction, \
     Arguments, TestFunctions, TrialFunctions
 
 # Coefficients
-from ufl.coefficient import Coefficient, Coefficients
+from ufl.coefficient import Coefficient, Coefficients, TopologicalCoefficient, Filter
 from ufl.constant import Constant, VectorConstant, TensorConstant
 
 # Split function
@@ -312,7 +310,7 @@ from ufl.core.multiindex import Index, indices
 from ufl.filtered import Filtered
 
 # Filter
-from ufl.filter import Filter
+#from ufl.filter import Filter
 
 # Special functions for expression base classes
 # (ensure this is imported, since it attaches operators to Expr)
@@ -378,7 +376,7 @@ __all__ = [
     'get_handler', 'get_logger', 'set_handler', 'set_level', 'add_logfile',
     'UFLException', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL',
     'as_cell', 'AbstractCell', 'Cell', 'TensorProductCell',
-    'as_domain', 'AbstractDomain', 'TopologicalMesh', 'Mesh', 'MeshView', 'TensorProductMesh',
+    'as_domain', 'AbstractDomain', 'Mesh', 'MeshView', 'TensorProductMesh', 'TopologicalMesh',
     'L2', 'H1', 'H2', 'HCurl', 'HDiv',
     'SpatialCoordinate',
     'CellVolume', 'CellDiameter', 'Circumradius',
@@ -392,12 +390,11 @@ __all__ = [
     'HDivElement', 'HCurlElement',
     'BrokenElement', 'FacetElement', 'InteriorElement',
     'register_element', 'show_elements',
-    'TopologicalFunctionSpace', 'FunctionSpace', 'MixedFunctionSpace',
+    'FunctionSpace', 'MixedFunctionSpace', 'TopologicalFunctionSpace',
     'Argument', 'TestFunction', 'TrialFunction',
     'Arguments', 'TestFunctions', 'TrialFunctions',
-    'Coefficient', 'Coefficients',
+    'Coefficient', 'Coefficients', 'TopologicalCoefficient', 'Filter',
     'Constant', 'VectorConstant', 'TensorConstant',
-    'Filter',
     'Filtered',
     'split',
     'PermutationSymbol', 'Identity', 'zero', 'as_ufl',

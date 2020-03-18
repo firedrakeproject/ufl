@@ -14,8 +14,9 @@ from itertools import chain
 from ufl.log import error, info
 from ufl.utils.sequences import max_degree
 
-from ufl.classes import GeometricFacetQuantity, Coefficient, Filter, Form, FunctionSpace
+from ufl.classes import GeometricFacetQuantity, Coefficient, Filter, Form, FunctionSpace, TopologicalFunctionSpace
 from ufl.corealg.traversal import traverse_unique_terminals
+from ufl.domain import TopologicalMesh
 from ufl.algorithms.analysis import extract_coefficients, extract_filters, extract_sub_elements, unique_tuple
 from ufl.algorithms.formdata import FormData
 from ufl.algorithms.formtransformations import compute_form_arities
@@ -189,7 +190,10 @@ def _build_replace_map(cls, objects, element_mapping=None):
         # This should be overhauled with requirement that Expressions
         # always have a domain.
         if f.ufl_domain() is not None:
-            new_e = FunctionSpace(f.ufl_domain(), new_e)
+            if isinstance(f.ufl_domain(), TopologicalMesh):
+                new_e = TopologicalFunctionSpace(f.ufl_domain(), new_e)
+            else:
+                new_e = FunctionSpace(f.ufl_domain(), new_e)
         new_f = cls(new_e, count=i)
         new_objects.append(new_f)
         replace_map[f] = new_f
