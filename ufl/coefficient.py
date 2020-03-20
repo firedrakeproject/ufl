@@ -178,7 +178,7 @@ class TopologicalCoefficient(Terminal):
         "Signature data depend on the global numbering of the topological coeff and domains."
         count = renumbering[self]
         fsdata = self._ufl_function_space._ufl_signature_data_(renumbering)
-        return (self.__class__.__name__, count, fsdata)
+        return ("TopologicalCoefficient", count, fsdata)
 
     def __str__(self):
         count = str(self._count)
