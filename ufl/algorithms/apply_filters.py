@@ -9,7 +9,7 @@
 
 
 from ufl.log import error
-from ufl.classes import Argument, Filtered
+from ufl.classes import FormArgument, Filtered
 from ufl.corealg.multifunction import MultiFunction
 from ufl.corealg.map_dag import map_expr_dag
 from ufl.algorithms.map_integrands import map_integrand_dags
@@ -30,7 +30,7 @@ class FilterRuleset(MultiFunction):
         "Must act directly on reference value of argument objects."
         f, = o.ufl_operands
         assert f._ufl_is_terminal_
-        assert isinstance(f, Argument)
+        assert isinstance(f, FormArgument)
         return Filtered(o, self._fltr)
 
 
