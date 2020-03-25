@@ -45,8 +45,8 @@ class Filtered(Operator):
         # Error checking
         #if not isinstance(expression, Argument):
         #    error("Expecting Argument instance, not %s." % ufl_err_str(expression))
-        if not isinstance(fltr, TopologicalCoefficient):
-            error("Expecting a TopologicalCoefficient instance, not %s." % ufl_err_str(fltr))
+        #if not isinstance(fltr, TopologicalCoefficient):
+        #    error("Expecting a TopologicalCoefficient instance, not %s." % ufl_err_str(fltr))
 
         # Error checking
         #if len(shape) != len(multiindex):

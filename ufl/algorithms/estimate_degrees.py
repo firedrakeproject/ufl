@@ -76,7 +76,7 @@ class SumDegreeEstimator(MultiFunction):
     def topological_coefficient(self, v):
         """A topological coefficient has no underlying geometry, and
         must not be used in a way that it would contribute to the degree."""
-        return None
+        return 0
 
     def _reduce_degree(self, v, f):
         """Reduces the estimated degree by one; used when derivatives
