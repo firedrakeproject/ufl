@@ -916,7 +916,6 @@ class GateauxDerivativeRuleset(GenericDerivativeRuleset):
                 vval, vcomp = v.ufl_operands
                 vcomp = tuple(vcomp)
             else:
-                print("v", repr(v))
                 error("Expecting argument or component of argument.")
             if not all(isinstance(k, FixedIndex) for k in vcomp):
                 error("Expecting only fixed indices in variation.")
