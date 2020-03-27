@@ -916,6 +916,7 @@ class GateauxDerivativeRuleset(GenericDerivativeRuleset):
                 vval, vcomp = v.ufl_operands
                 vcomp = tuple(vcomp)
             else:
+                print("v", repr(v))
                 error("Expecting argument or component of argument.")
             if not all(isinstance(k, FixedIndex) for k in vcomp):
                 error("Expecting only fixed indices in variation.")
@@ -1053,8 +1054,18 @@ class DerivativeRuleDispatcher(MultiFunction):
 
     def coefficient_derivative(self, o, f, dummy_w, dummy_v, dummy_cd):
         dummy, w, v, cd = o.ufl_operands
+        from ufl.classes import Filtered
+        from ufl.algorithms import replace
+        from ufl.exprcontainers import ExprList
+        is_filtered = any([isinstance(p, Filtered) for p in v.ufl_operands])
+        if is_filtered:
+            _v = v
+            v = ExprList(*[p.ufl_operands[0] if isinstance(p, Filtered) else p for p in v.ufl_operands])
         rules = GateauxDerivativeRuleset(w, v, cd)
-        return map_expr_dag(rules, f)
+        a = map_expr_dag(rules, f)
+        if is_filtered:
+            a = replace(a, dict(zip(v.ufl_operands, _v.ufl_operands)))
+        return a
 
     def coordinate_derivative(self, o, f, dummy_w, dummy_v, dummy_cd):
         o_ = o.ufl_operands
