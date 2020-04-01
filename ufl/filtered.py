@@ -63,6 +63,10 @@ class Filtered(Operator):
         self.ufl_free_indices = expression.ufl_free_indices
         self.ufl_index_dimensions = expression.ufl_index_dimensions
 
+    def ufl_element(self):
+        "Shortcut to get the finite element of the function space of the operand."
+        return self.ufl_operands[0].ufl_element()
+
     def __str__(self):
         return "%s[%s]" % (parstr(self.ufl_operands[0], self),
                            self.ufl_operands[1])
