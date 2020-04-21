@@ -128,6 +128,7 @@ register_element("Hermite", "HER", 0, H1, "identity", (3, 3), simplices)
 register_element("Mardal-Tai-Winther", "MTW", 0, H1, "identity", None,
                  ("triangle",))
 register_element("Morley", "MOR", 0, H2, "identity", (2, 2), ("triangle",))
+register_element("Bogner-Fox-Schmit", "BFS", 0, H2, "identity", (3, 3), cubes)
 
 # Special elements
 register_element("Boundary Quadrature", "BQ", 0, L2, "identity", (0, None),
