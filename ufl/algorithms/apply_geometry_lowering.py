@@ -295,7 +295,14 @@ class GeometryLoweringApplier(MultiFunction):
 
         domain = o.ufl_domain()
 
-        if not domain.ufl_coordinate_element().degree() == 1:
+        degree = domain.ufl_coordinate_element().degree()
+        try:
+            # Check for Q1 tensor product cells.
+            a, b = degree
+            flat = a == b and a == 1
+        except TypeError:
+            flat = degree == 1
+        if not flat:
             # Don't lower bendy cells, instead leave it to form compiler
             warning("Only know how to compute cell diameter of P1 or Q1 cell.")
             return o
