@@ -105,7 +105,7 @@ def apply_integral_scaling(form):
         def scale_coordinate_derivative(o, scale):
             o_ = o.ufl_operands
             if isinstance(o, CoordinateDerivative):
-                return CoordinateDerivative(scale_coordinate_derivative(o_[0], scale), o_[1], o_[2], o_[3])
+                return CoordinateDerivative(scale_coordinate_derivative(o_[0], scale), o_[1], o_[2], o_[3], o_[4])
             else:
                 return scale * o
         newintegrand = scale_coordinate_derivative(integrand, scale)

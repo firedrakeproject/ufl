@@ -297,7 +297,7 @@ class SumDegreeEstimator(MultiFunction):
         return self._max_degrees(v, l, r)
     max_value = min_value
 
-    def coordinate_derivative(self, v, integrand_degree, b, direction_degree, d):
+    def coordinate_derivative(self, v, integrand_degree, b, direction_degree, d, c):
         """ We use the heuristic that a shape derivative in direction V
         introduces terms V and grad(V) into the integrand. Hence we add the
         degree of the deformation to the estimate. """

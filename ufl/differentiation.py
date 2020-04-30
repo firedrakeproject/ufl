@@ -16,7 +16,7 @@ from ufl.core.operator import Operator
 from ufl.core.ufl_type import ufl_type
 
 from ufl.exprcontainers import ExprList, ExprMapping
-from ufl.constantvalue import Zero
+from ufl.constantvalue import Zero, IntValue
 from ufl.coefficient import Coefficient
 from ufl.variable import Variable
 from ufl.precedence import parstr
@@ -68,16 +68,38 @@ class CoefficientDerivative(Derivative):
                self.ufl_operands[2], self.ufl_operands[3])
 
 
-@ufl_type(num_ops=4, inherit_shape_from_operand=0,
+@ufl_type(num_ops=5, inherit_shape_from_operand=0,
           inherit_indices_from_operand=0)
-class CoordinateDerivative(CoefficientDerivative):
+class CoordinateDerivative(Derivative):
     """Derivative of the integrand of a form w.r.t. the SpatialCoordinates."""
     __slots__ = ()
 
+    def __new__(cls, integrand, coefficients, arguments,
+                coefficient_derivatives, conjugated=IntValue(0)):
+        if not isinstance(coefficients, ExprList):
+            error("Expecting ExprList instance with Coefficients.")
+        if not isinstance(arguments, ExprList):
+            error("Expecting ExprList instance with Arguments.")
+        if not isinstance(coefficient_derivatives, ExprMapping):
+            error("Expecting ExprMapping for coefficient derivatives.")
+        if not isinstance(conjugated, IntValue) and not isinstance(conjugated, Zero):
+            print(type(conjugated))
+            error("Expecting IntValue or Zero for conjugated.")
+        if isinstance(integrand, Zero):
+            return integrand
+        return Derivative.__new__(cls)
+
+    def __init__(self, integrand, coefficients, arguments,
+                 coefficient_derivatives, conjugated=IntValue(0)):
+        if not isinstance(coefficient_derivatives, ExprMapping):
+            coefficient_derivatives = ExprMapping(coefficient_derivatives)
+        Derivative.__init__(self, (integrand, coefficients, arguments,
+                                   coefficient_derivatives, conjugated))
+
     def __str__(self):
-        return "d/dfj { %s }, with fh=%s, dfh/dfj = %s, and coordinate derivatives %s"\
+        return "d/dfj { %s }, with fh=%s, dfh/dfj = %s, coefficient derivatives %s and conjugated=%s"\
             % (self.ufl_operands[0], self.ufl_operands[1],
-               self.ufl_operands[2], self.ufl_operands[3])
+               self.ufl_operands[2], self.ufl_operands[3], self.ufl_operands[4])
 
 
 @ufl_type(num_ops=2)

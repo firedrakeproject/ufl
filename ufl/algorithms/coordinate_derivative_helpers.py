@@ -61,7 +61,7 @@ def strip_coordinate_derivatives(integrals):
         def take_top_coordinate_derivatives(o):
             o_ = o.ufl_operands
             if isinstance(o, CoordinateDerivative):
-                coordinate_derivatives.append((o_[1], o_[2], o_[3]))
+                coordinate_derivatives.append((o_[1], o_[2], o_[3], o_[4]))
                 return take_top_coordinate_derivatives(o_[0])
             else:
                 return o
@@ -81,7 +81,7 @@ def attach_coordinate_derivatives(integral, coordinate_derivatives):
         integrand = integral.integrand()
         # apply the stored coordinate derivatives back onto the integrand
         for tup in reversed(coordinate_derivatives):
-            integrand = CoordinateDerivative(integrand, tup[0], tup[1], tup[2])
+            integrand = CoordinateDerivative(integrand, tup[0], tup[1], tup[2], tup[3])
         return integral.reconstruct(integrand=integrand)
     else:
         error("Invalid type %s" % (integral.__class__.__name__,))

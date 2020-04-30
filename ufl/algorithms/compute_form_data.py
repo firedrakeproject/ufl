@@ -31,11 +31,13 @@ from ufl.algorithms.apply_restrictions import apply_restrictions, apply_default_
 from ufl.algorithms.estimate_degrees import estimate_total_polynomial_degree
 from ufl.algorithms.remove_complex_nodes import remove_complex_nodes
 from ufl.algorithms.comparison_checker import do_comparison_check
+from ufl.algorithms.map_integrands import map_integrands
 
 # See TODOs at the call sites of these below:
 from ufl.algorithms.domain_analysis import build_integral_data
 from ufl.algorithms.domain_analysis import reconstruct_form_from_integral_data
 from ufl.algorithms.domain_analysis import group_form_integrals
+from ufl.algebra import Conj
 
 
 def _auto_select_degree(elements):
@@ -211,6 +213,18 @@ def attach_estimated_degrees(form):
         new_integrals.append(integral.reconstruct(metadata=md))
     return Form(new_integrals)
 
+from ufl.differentiation import CoordinateDerivative
+from ufl.constantvalue import IntValue
+def apply_conjugate_coordinate_derivative_fusion(form):
+    def fuse(obj):
+        if isinstance(obj, Conj):
+            o = obj.ufl_operands
+            if isinstance(o[0], CoordinateDerivative):
+                o_ = o[0].ufl_operands
+                return CoordinateDerivative(o_[0], o_[1], o_[2], o_[3], IntValue(o_[4] == IntValue(0)))
+        return obj
+    return map_integrands(fuse, form)
+
 
 def compute_form_data(form,
                       # Default arguments configured to behave the way old FFC expects it:
@@ -263,6 +277,18 @@ def compute_form_data(form,
     # after coefficients are rewritten, and in particular for
     # user-defined coefficient relations it just gets too messy
     form = apply_derivatives(form)
+
+    # Usually we expect the coordinate derivative to be the outer most object.
+    # This is necessary because the coordinate derivative actually acts on an
+    # _integral_ and not just an _integrand_, but UFL has no notion of algebra
+    # on integrals. Everything is usually just done on integrands.  However,
+    # when computing adjoints with complex=True, pyadjoint applies the
+    # derivative and then simply wraps a `Conj` around the resulting
+    # expression. This violates the assumption that the `CoordinateDerivative` is outermost.
+    # The function below fuses the `Conj` into the `CoordinateDerivative`, so that the usual
+    # pipeline still works and the `Conj` is simply applied when the
+    # `CoordinateDerivative` is applied.
+    form = apply_conjugate_coordinate_derivative_fusion(form)
 
     # --- Group form integrals
     # TODO: Refactor this, it's rather opaque what this does

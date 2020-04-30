@@ -1019,7 +1019,7 @@ class GateauxDerivativeRuleset(GenericDerivativeRuleset):
 
     def coordinate_derivative(self, o):
         o = o.ufl_operands
-        return CoordinateDerivative(map_expr_dag(self, o[0]), o[1], o[2], o[3])
+        return CoordinateDerivative(map_expr_dag(self, o[0]), o[1], o[2], o[3], o[4])
 
 
 class DerivativeRuleDispatcher(MultiFunction):
@@ -1051,9 +1051,9 @@ class DerivativeRuleDispatcher(MultiFunction):
         rules = GateauxDerivativeRuleset(w, v, cd)
         return map_expr_dag(rules, f)
 
-    def coordinate_derivative(self, o, f, dummy_w, dummy_v, dummy_cd):
+    def coordinate_derivative(self, o, f, dummy_w, dummy_v, dummy_cd, dummy_conj):
         o_ = o.ufl_operands
-        return CoordinateDerivative(map_expr_dag(self, o_[0]), o_[1], o_[2], o_[3])
+        return CoordinateDerivative(map_expr_dag(self, o_[0]), o_[1], o_[2], o_[3], o_[4])
 
     def indexed(self, o, Ap, ii):  # TODO: (Partially) duplicated in generic rules
         # Reuse if untouched
@@ -1204,15 +1204,20 @@ class CoordinateDerivativeRuleDispatcher(MultiFunction):
 
     def coordinate_derivative(self, o):
         from ufl.algorithms import extract_unique_elements
+        from ufl.constantvalue import IntValue
         spaces = set(c.family() for c in extract_unique_elements(o))
         unsupported_spaces = {"Argyris", "Bell", "Hermite", "Morley"}
         if spaces & unsupported_spaces:
             error("CoordinateDerivative is not supported for elements of type %s. "
                   "This is because their pullback is not implemented in UFL." % unsupported_spaces)
-        f, w, v, cd = o.ufl_operands
+        f, w, v, cd, conj = o.ufl_operands
         f = self(f)  # transform f
         rules = CoordinateDerivativeRuleset(w, v, cd)
-        return map_expr_dag(rules, f)
+        res = map_expr_dag(rules, f)
+        if conj == IntValue(1):
+            from ufl.algebra import Conj
+            res = Conj(res)
+        return res
 
 
 def apply_coordinate_derivatives(expression):

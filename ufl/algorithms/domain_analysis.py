@@ -300,6 +300,7 @@ def group_form_integrals(form, domains, do_append_everywhere_integrals=True):
                 # strip the coordinate derivatives from all integrals
                 # this yields a list of the form [(coordinate derivative, integral), ...]
                 stripped_integrals_and_coordderivs = strip_coordinate_derivatives(ss_integrals)
+                print("stripped_integrals_and_coordderivs %s" % (stripped_integrals_and_coordderivs))
 
                 # now group the integrals by the coordinate derivative
                 def calc_hash(cd):
