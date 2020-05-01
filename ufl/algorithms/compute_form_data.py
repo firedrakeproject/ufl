@@ -319,7 +319,7 @@ def compute_form_data(form,
     # derivatives
     if do_apply_function_pullbacks or do_apply_geometry_lowering:
         form = apply_derivatives(form)
-        print("after  apply_derivatives::::", form)
+        #print("after  apply_derivatives::::", form)
 
         # Neverending story: apply_derivatives introduces new Jinvs,
         # which needs more geometry lowering
