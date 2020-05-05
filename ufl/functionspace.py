@@ -195,7 +195,7 @@ class TopologicalFunctionSpace(AbstractFunctionSpace):
             try:
                 domain_cell = domain.ufl_cell()
             except AttributeError:
-                error("Expected non-abstract domain for initalization of function space.")
+                error("Expected non-abstract domain for initalization of topological function space.")
             else:
                 if element.cell() != domain_cell:
                     pass

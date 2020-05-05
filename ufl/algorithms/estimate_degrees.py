@@ -148,7 +148,7 @@ class SumDegreeEstimator(MultiFunction):
     def indexed(self, v, A, ii):
         return A
 
-    def filtered(self, v, A, fltr):
+    def transformed(self, v, A, transform_op):
         return A
 
     def component_tensor(self, v, A, ii):

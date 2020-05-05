@@ -262,13 +262,13 @@ class TopologicalMesh(AbstractDomain):
         return self._ufl_cargo
 
     def ufl_coordinate_element(self):
-        error("This method must not be called on TopologicalMesh.")
+        error("TopologicalMesh does not have a coordinate element.")
 
     def ufl_cell(self):
         return self._ufl_cell
 
     def is_piecewise_linear_simplex_domain(self):
-        error("This method must not be called on TopologicalMesh.")
+        error("TopologicalMesh does not have a coordinate element.")
 
     def __repr__(self):
         r = "TopologicalMesh(%s, %s)" % (repr(self._ufl_cell), repr(self._ufl_id))

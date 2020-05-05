@@ -20,7 +20,7 @@ from ufl.classes import ConstantValue, Identity, Zero, FloatValue
 from ufl.classes import Coefficient, FormArgument, ReferenceValue
 from ufl.classes import Grad, ReferenceGrad, Variable
 from ufl.classes import Indexed, ListTensor, ComponentTensor
-from ufl.classes import Filtered
+from ufl.classes import Transformed
 from ufl.classes import ExprList, ExprMapping
 from ufl.classes import Product, Sum, IndexSum
 from ufl.classes import Conj, Real, Imag
@@ -200,11 +200,11 @@ class GenericDerivativeRuleset(MultiFunction):
             op = Indexed(Ap, ii)
         return op
 
-    def filtered(self, o, Ap, fltr):
+    def transformed(self, o, Ap, transform_op):
         # Propagate zeros
         if isinstance(Ap, Zero):
             return self.independent_operator(o)
-        return Filtered(Ap, fltr)
+        return Transformed(Ap, transform_op)
 
     def list_tensor(self, o, *dops):
         return ListTensor(*dops)
@@ -898,7 +898,8 @@ class GateauxDerivativeRuleset(GenericDerivativeRuleset):
         # Find o among all w without any indexing, which makes this
         # easy
         for (w, v) in zip(self._w, self._v):
-            if o == w and isinstance(v, FormArgument):
+            #if o == w and isinstance(v, FormArgument):
+            if o == w and isinstance(v, (FormArgument, Transformed)):
                 # Case: d/dt [w + t v]
                 return apply_grads(v)
 
@@ -1053,17 +1054,17 @@ class DerivativeRuleDispatcher(MultiFunction):
 
     def coefficient_derivative(self, o, f, dummy_w, dummy_v, dummy_cd):
         dummy, w, v, cd = o.ufl_operands
-        from ufl.classes import Filtered
+        from ufl.classes import Transformed
         from ufl.algorithms import replace
         from ufl.exprcontainers import ExprList
-        is_filtered = any([isinstance(p, Filtered) for p in v.ufl_operands])
-        if is_filtered:
-            _v = v
-            v = ExprList(*[p.ufl_operands[0] if isinstance(p, Filtered) else p for p in v.ufl_operands])
+        #is_transformed = any([isinstance(p, Transformed) for p in v.ufl_operands])
+        #if is_transformed:
+        #    _v = v
+        #    v = ExprList(*[p.ufl_operands[0] if isinstance(p, Transformed) else p for p in v.ufl_operands])
         rules = GateauxDerivativeRuleset(w, v, cd)
         a = map_expr_dag(rules, f)
-        if is_filtered:
-            a = replace(a, dict(zip(v.ufl_operands, _v.ufl_operands)))
+        #if is_transformed:
+        #    a = replace(a, dict(zip(v.ufl_operands, _v.ufl_operands)))
         return a
 
     def coordinate_derivative(self, o, f, dummy_w, dummy_v, dummy_cd):

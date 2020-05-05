@@ -29,7 +29,7 @@ from ufl.algorithms.apply_derivatives import apply_derivatives, apply_coordinate
 from ufl.algorithms.apply_integral_scaling import apply_integral_scaling
 from ufl.algorithms.apply_geometry_lowering import apply_geometry_lowering
 from ufl.algorithms.apply_restrictions import apply_restrictions, apply_default_restrictions
-from ufl.algorithms.apply_filters import apply_filters
+from ufl.algorithms.apply_transforms import apply_transforms
 from ufl.algorithms.estimate_degrees import estimate_total_polynomial_degree
 from ufl.algorithms.remove_complex_nodes import remove_complex_nodes
 from ufl.algorithms.comparison_checker import do_comparison_check
@@ -227,7 +227,7 @@ def compute_form_data(form,
                       preserve_geometry_types=(),
                       do_apply_default_restrictions=True,
                       do_apply_restrictions=True,
-                      do_apply_filters=True,
+                      do_apply_transforms=True,
                       do_estimate_degrees=True,
                       do_append_everywhere_integrals=True,
                       complex_mode=False,
@@ -328,9 +328,9 @@ def compute_form_data(form,
     if do_apply_restrictions:
         form = apply_restrictions(form)
 
-    # Propagate filters to reference values
-    if do_apply_filters:
-        form = apply_filters(form)
+    # Propagate transform operators to reference values
+    if do_apply_transforms:
+        form = apply_transforms(form)
 
     # --- Group integrals into IntegralData objects
     # Most of the heavy lifting is done above in group_form_integrals.
@@ -374,8 +374,8 @@ def compute_form_data(form,
     for itg_data in self.integral_data:
         itg_data.enabled_coefficients = [bool(coeff in itg_data.integral_coefficients)
                                          for coeff in self.reduced_coefficients]
-        itg_data.enabled_topological_coefficients = [bool(fltr in itg_data.integral_topological_coefficients)
-                                                     for fltr in self.reduced_topological_coefficients]
+        itg_data.enabled_topological_coefficients = [bool(topo_coeff in itg_data.integral_topological_coefficients)
+                                                     for topo_coeff in self.reduced_topological_coefficients]
 
     # --- Collect some trivial data
 
