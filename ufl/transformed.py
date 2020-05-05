@@ -7,18 +7,11 @@
 #
 # SPDX-License-Identifier:    LGPL-3.0-or-later
 
-from ufl.log import error
 from ufl.constantvalue import Zero
-from ufl.core.expr import ufl_err_str
 from ufl.core.ufl_type import ufl_type
 from ufl.core.operator import Operator
-from ufl.core.multiindex import Index, FixedIndex, MultiIndex
-from ufl.argument import Argument
-from ufl.index_combination_utils import unique_sorted_indices, merge_unique_indices
 from ufl.precedence import parstr
-from ufl.coefficient import TopologicalCoefficient
 
-# --- Indexed expression ---
 
 @ufl_type(num_ops=2, is_terminal_modifier=True, inherit_shape_from_operand=0, inherit_indices_from_operand=0)
 class Transformed(Operator):

@@ -133,7 +133,7 @@ def _compute_form_data_elements(self, arguments, coefficients, topological_coeff
     #       almost working, with the introduction of the coordinate
     #       elements here.
 
-    all_elements = self.argument_elements + self.coefficient_elements + self.topological_coefficient_elements+ self.coordinate_elements
+    all_elements = self.argument_elements + self.coefficient_elements + self.topological_coefficient_elements + self.coordinate_elements
     all_sub_elements = extract_sub_elements(all_elements)
 
     self.unique_elements = unique_tuple(all_elements)

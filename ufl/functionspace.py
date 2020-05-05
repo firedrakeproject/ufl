@@ -198,8 +198,7 @@ class TopologicalFunctionSpace(AbstractFunctionSpace):
                 error("Expected non-abstract domain for initalization of topological function space.")
             else:
                 if element.cell() != domain_cell:
-                    pass
-                    #error("Non-matching cell of finite element and domain.")
+                    error("Non-matching cell of finite element and domain.")
 
         AbstractFunctionSpace.__init__(self)
         self._ufl_domain = domain

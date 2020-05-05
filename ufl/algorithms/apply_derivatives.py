@@ -1054,9 +1054,9 @@ class DerivativeRuleDispatcher(MultiFunction):
 
     def coefficient_derivative(self, o, f, dummy_w, dummy_v, dummy_cd):
         dummy, w, v, cd = o.ufl_operands
-        from ufl.classes import Transformed
-        from ufl.algorithms import replace
-        from ufl.exprcontainers import ExprList
+        #from ufl.classes import Transformed
+        #from ufl.algorithms import replace
+        #from ufl.exprcontainers import ExprList
         #is_transformed = any([isinstance(p, Transformed) for p in v.ufl_operands])
         #if is_transformed:
         #    _v = v
