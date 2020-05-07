@@ -15,7 +15,7 @@ from itertools import chain
 from collections import defaultdict
 
 from ufl.log import error, warning
-from ufl.domain import sort_domains
+from ufl.domain import extract_domains, sort_domains
 from ufl.integral import Integral
 from ufl.checks import is_scalar_constant_expression
 from ufl.equation import Equation
@@ -404,14 +404,15 @@ class Form(object):
         from ufl.domain import join_domains, sort_domains
 
         # Collect unique integration domains
-        integration_domains = join_domains(
-            [itg.ufl_domain() for itg in self._integrals])
+        integration_domains = set()
+        for itg in self._integrals:
+            integration_domains.update(itg.ufl_domain())
+            integration_domains.update(extract_domains(itg.integrand()))
+        integration_domains = join_domains(integration_domains)
 
         # Make canonically ordered list of the domains
         self._integration_domains = sort_domains(integration_domains)
 
-        # TODO: Not including domains from coefficients and arguments
-        # here, may need that later
         self._domain_numbering = dict(
             (d, i) for i, d in enumerate(self._integration_domains))
 
