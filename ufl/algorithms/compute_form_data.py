@@ -356,7 +356,7 @@ def compute_form_data(form,
                 itg_data.integral_coefficients.append(itg_coeff)
                 itg_data.integral_coefficients_parts.append(None)
             else:
-                # Component of a mixed coefficient
+                #Component of a mixed coefficient
                 raise RuntimeError("mmm: this part shouldn't be called")
                 if parent not in itg_data.integral_coefficients:
                     itg_data.integral_coefficients.append(parent)

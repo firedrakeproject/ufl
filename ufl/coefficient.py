@@ -121,30 +121,30 @@ class Coefficient(FormArgument):
         if self is other:
             return True
         return (self._count == other._count and
-                self._part == other._part and
-                self._parent == other._parent and
+                #self._part == other._part and
+                #self._parent == other._parent and
                 self._ufl_function_space == other._ufl_function_space)
 
     def mixed(self):
         "Return True if defined on a mixed function space."
         return self.ufl_function_space().mixed()
 
-    @property
-    @lru_cache()
-    def _split(self):
-        "Construct a tuple of component coefficients if mixed()."
-        return tuple(type(self)(V, part=i, parent=self)
-                     for i, V in enumerate(self.ufl_function_space().split()))
+    #@property
+    #@lru_cache()
+    #def _split(self):
+    #    "Construct a tuple of component coefficients if mixed()."
+    #    return tuple(type(self)(V, part=i, parent=self)
+    #                 for i, V in enumerate(self.ufl_function_space().split()))
 
-    def split(self):
-        "Split into a tuple of constituent coefficients."
-        if self.mixed():
-            return self._split
-        else:
-            return (self, )
+    #def split(self):
+    #    "Split into a tuple of constituent coefficients."
+    #    if self.mixed():
+    #        return self._split
+    #    else:
+    #        return (self, )
 
-    def __iter__(self):
-        return iter(self.split())
+    #def __iter__(self):
+    #    return iter(self.split())
 
     #mmm:
     #def __getitem__(self, index):

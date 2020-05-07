@@ -121,19 +121,19 @@ class FunctionSpace(AbstractFunctionSpace):
     def mixed(self):
         return isinstance(self.ufl_domain(), tuple)
 
-    @property
-    @lru_cache()
-    def _split(self):
-        "Construct a tuple of component FunctionSpaces if mixed()."
-        return tuple(type(self)(d, e)
-                     for d, e in zip(self.ufl_domain(), self.ufl_element().sub_elements()))
+    #@property
+    #@lru_cache()
+    #def _split(self):
+    #    "Construct a tuple of component FunctionSpaces if mixed()."
+    #    return tuple(type(self)(d, e)
+    #                 for d, e in zip(self.ufl_domain(), self.ufl_element().sub_elements()))
 
-    def split(self):
-        "Split into constituent spaces."
-        if self.mixed():
-            return self._split
-        else:
-            return (self, )
+    #def split(self):
+    #    "Split into constituent spaces."
+    #    if self.mixed():
+    #        return self._split
+    #    else:
+    #        return (self, )
 
     #mmm:
     #def __getitem__(self, index):

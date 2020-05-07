@@ -593,6 +593,9 @@ class GradRuleset(GenericDerivativeRuleset):
         if not valid_operand:
             error("ReferenceGrad can only wrap a reference frame type!")
         domain = f.ufl_domain()
+        #Implement this
+        if isinstance(domain, tuple):
+            raise NotImplementedError("grad of referance_grad for mixed space not implemented yet.")
         K = JacobianInverse(domain)
         r = indices(len(o.ufl_shape))
         i, j = indices(2)
