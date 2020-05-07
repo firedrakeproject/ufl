@@ -553,7 +553,7 @@ class GradRuleset(GenericDerivativeRuleset):
             element = f.ufl_function_space().ufl_element()
             g = ReferenceGrad(o)
             vsh = g.ufl_shape[:-1]
-            rdim0 = g.ufl_shape[-1]
+            rdim_max = g.ufl_shape[-1]
             components = []
             dofoffset = 0
             for d, e in flatten_domain_element(domain, element):
@@ -563,7 +563,7 @@ class GradRuleset(GenericDerivativeRuleset):
                     esh = (1, )
                 assert esh[1:] == vsh[1:]
                 rdim, gdim = K.ufl_shape
-                assert rdim <= rdim0
+                assert rdim <= rdim_max
                 assert gdim == self._var_shape[0]
                 for idx in numpy.ndindex(esh):
                     eidx = list(idx)
@@ -572,7 +572,8 @@ class GradRuleset(GenericDerivativeRuleset):
                     for i in range(gdim):
                         temp = Zero()
                         # Only sum over actual reference dimension.
-                        # g.ufl_shape[-1] >= K.ufl_shape[0] (= rdim)
+                        # g.ufl_shape[-1] = rdim_max
+                        # K.ufl_shape[0]  = rdim
                         for j in range(rdim):
                             temp += g[eidx + (j, )] * K[j, i]
                         components.append(temp)
