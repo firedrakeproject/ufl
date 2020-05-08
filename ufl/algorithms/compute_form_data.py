@@ -22,7 +22,6 @@ from ufl.algorithms.formtransformations import compute_form_arities
 from ufl.algorithms.check_arities import check_form_arity
 
 # These are the main symbolic processing steps:
-from ufl.algorithms.split_mixed_coefficients import split_mixed_coefficients
 from ufl.algorithms.apply_function_pullbacks import apply_function_pullbacks
 from ufl.algorithms.apply_algebra_lowering import apply_algebra_lowering
 from ufl.algorithms.apply_derivatives import apply_derivatives, apply_coordinate_derivatives
@@ -271,12 +270,6 @@ def compute_form_data(form,
     # user-defined coefficient relations it just gets too messy
     form = apply_derivatives(form)
 
-
-
-    #print("before:::", repr(form))
-    #form = split_mixed_coefficients(form)
-    #print("after:::", repr(form))
-
     # --- Group form integrals
     # TODO: Refactor this, it's rather opaque what this does
     # TODO: Is self.original_form.ufl_domains() right here?
@@ -347,21 +340,24 @@ def compute_form_data(form,
         for itg in itg_data.integrals:
             itg_coeffs.update(extract_coefficients(itg.integrand()))
         # Store with IntegralData object
-        itg_data.integral_coefficients = []
-        itg_data.integral_coefficients_parts = []
-        for itg_coeff in itg_coeffs:
-            parent = itg_coeff.parent
-            if parent is None:
-                # Regular coefficient
-                itg_data.integral_coefficients.append(itg_coeff)
-                itg_data.integral_coefficients_parts.append(None)
-            else:
-                #Component of a mixed coefficient
-                raise RuntimeError("mmm: this part shouldn't be called")
-                if parent not in itg_data.integral_coefficients:
-                    itg_data.integral_coefficients.append(parent)
-                    itg_data.integral_coefficients_parts.append(set())
-                itg_data.integral_coefficients_parts[itg_data.integral_coefficients.index(parent)].update((parent.split().index(itg_coeff), ))
+        itg_data.integral_coefficients = itg_coeffs
+        print("remove itg_data.integral_coefficients_parts.")
+        #itg_data.integral_coefficients = []
+        #itg_data.integral_coefficients_parts = []
+        #for itg_coeff in itg_coeffs:
+        #    parent = itg_coeff.parent
+        #    if parent is None:
+        #        # Regular coefficient
+        #        itg_data.integral_coefficients.append(itg_coeff)
+        #        itg_data.integral_coefficients_parts.append(None)
+        #    else:
+        #        #Component of a mixed coefficient
+        #        print("mmm:a ", repr(itg_coeff))
+        #        raise RuntimeError("mmm: this part shouldn't be called")
+        #        if parent not in itg_data.integral_coefficients:
+        #            itg_data.integral_coefficients.append(parent)
+        #            itg_data.integral_coefficients_parts.append(set())
+        #        itg_data.integral_coefficients_parts[itg_data.integral_coefficients.index(parent)].update((parent.split().index(itg_coeff), ))
 
     # Figure out which coefficients from the original form are
     # actually used in any integral (Differentiation may reduce the

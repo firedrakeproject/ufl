@@ -68,10 +68,10 @@ class Coefficient(FormArgument):
     def part(self):
         return self._part
 
-    @property
-    def parent(self):
-        "Return the parent coefficient from which this coefficient is extructed."
-        return self._parent
+    #@property
+    #def parent(self):
+    #    "Return the parent coefficient from which this coefficient is extructed."
+    #    return self._parent
 
     @property
     def ufl_shape(self):
