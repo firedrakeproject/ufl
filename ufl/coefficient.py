@@ -35,7 +35,7 @@ class Coefficient(FormArgument):
     _ufl_noslots_ = True
     _globalcount = 0
 
-    def __init__(self, function_space, count=None, part=None, parent=None):
+    def __init__(self, function_space, count=None):
         FormArgument.__init__(self)
         counted_init(self, count, Coefficient)
 
@@ -56,22 +56,11 @@ class Coefficient(FormArgument):
         self._ufl_function_space = function_space
         self._ufl_shape = function_space.ufl_element().value_shape()
 
-        self._part = part
-        self._parent = parent
-
-        self._repr = "Coefficient(%s, %s, %s, %s)" % (
-            repr(self._ufl_function_space), repr(self._count), repr(self._part), repr(self._parent))
+        self._repr = "Coefficient(%s, %s)" % (
+            repr(self._ufl_function_space), repr(self._count))
 
     def count(self):
         return self._count
-
-    def part(self):
-        return self._part
-
-    #@property
-    #def parent(self):
-    #    "Return the parent coefficient from which this coefficient is extructed."
-    #    return self._parent
 
     @property
     def ufl_shape(self):
@@ -102,15 +91,14 @@ class Coefficient(FormArgument):
         "Signature data for form arguments depend on the global numbering of the form arguments and domains."
         count = renumbering[self]
         fsdata = self._ufl_function_space._ufl_signature_data_(renumbering)
-        return ("Coefficient", count, self._part, self._parent, fsdata)
+        return ("Coefficient", count, fsdata)
 
     def __str__(self):
         count = str(self._count)
         if len(count) == 1:
-            s = "w_%s" % count
+            return "w_%s" % count
         else:
-            s = "w_{%s}" % count
-        return s
+            return "w_{%s}" % count
 
     def __repr__(self):
         return self._repr
@@ -121,36 +109,11 @@ class Coefficient(FormArgument):
         if self is other:
             return True
         return (self._count == other._count and
-                #self._part == other._part and
-                #self._parent == other._parent and
                 self._ufl_function_space == other._ufl_function_space)
 
     def mixed(self):
         "Return True if defined on a mixed function space."
         return self.ufl_function_space().mixed()
-
-    #@property
-    #@lru_cache()
-    #def _split(self):
-    #    "Construct a tuple of component coefficients if mixed()."
-    #    return tuple(type(self)(V, part=i, parent=self)
-    #                 for i, V in enumerate(self.ufl_function_space().split()))
-
-    #def split(self):
-    #    "Split into a tuple of constituent coefficients."
-    #    if self.mixed():
-    #        return self._split
-    #    else:
-    #        return (self, )
-
-    #def __iter__(self):
-    #    return iter(self.split())
-
-    #mmm:
-    #def __getitem__(self, index):
-    #    if self.mixed():
-    #        return self.split()[index]
-    #    return super().__getitem__(index)
 
 
 # --- Helper functions for subfunctions on mixed elements ---

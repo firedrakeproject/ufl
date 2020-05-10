@@ -13,7 +13,6 @@
 from ufl.log import error
 from ufl.core.ufl_type import attach_operators_from_hash_data
 from ufl.domain import join_domains
-from functools import lru_cache
 
 # Export list for ufl.classes
 __all_classes__ = [
@@ -120,26 +119,6 @@ class FunctionSpace(AbstractFunctionSpace):
 
     def mixed(self):
         return isinstance(self.ufl_domain(), tuple)
-
-    #@property
-    #@lru_cache()
-    #def _split(self):
-    #    "Construct a tuple of component FunctionSpaces if mixed()."
-    #    return tuple(type(self)(d, e)
-    #                 for d, e in zip(self.ufl_domain(), self.ufl_element().sub_elements()))
-
-    #def split(self):
-    #    "Split into constituent spaces."
-    #    if self.mixed():
-    #        return self._split
-    #    else:
-    #        return (self, )
-
-    #mmm:
-    #def __getitem__(self, index):
-    #    if self.mixed():
-    #        return self.split()[index]
-    #    return super().__getitem__(index)
 
 
 @attach_operators_from_hash_data
