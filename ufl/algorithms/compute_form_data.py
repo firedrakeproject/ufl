@@ -341,23 +341,6 @@ def compute_form_data(form,
             itg_coeffs.update(extract_coefficients(itg.integrand()))
         # Store with IntegralData object
         itg_data.integral_coefficients = itg_coeffs
-        print("remove itg_data.integral_coefficients_parts.")
-        #itg_data.integral_coefficients = []
-        #itg_data.integral_coefficients_parts = []
-        #for itg_coeff in itg_coeffs:
-        #    parent = itg_coeff.parent
-        #    if parent is None:
-        #        # Regular coefficient
-        #        itg_data.integral_coefficients.append(itg_coeff)
-        #        itg_data.integral_coefficients_parts.append(None)
-        #    else:
-        #        #Component of a mixed coefficient
-        #        print("mmm:a ", repr(itg_coeff))
-        #        raise RuntimeError("mmm: this part shouldn't be called")
-        #        if parent not in itg_data.integral_coefficients:
-        #            itg_data.integral_coefficients.append(parent)
-        #            itg_data.integral_coefficients_parts.append(set())
-        #        itg_data.integral_coefficients_parts[itg_data.integral_coefficients.index(parent)].update((parent.split().index(itg_coeff), ))
 
     # Figure out which coefficients from the original form are
     # actually used in any integral (Differentiation may reduce the
