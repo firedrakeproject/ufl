@@ -406,8 +406,7 @@ class Form(object):
         # Collect unique integration domains
         integration_domains = set()
         for itg in self._integrals:
-            integration_domains.update(itg.ufl_domain())
-            print("extracted domains::", extract_domains(itg.integrand()))
+            integration_domains.update((itg.ufl_domain(), ))
             integration_domains.update(extract_domains(itg.integrand()))
         integration_domains = join_domains(integration_domains)
 
@@ -475,7 +474,6 @@ class Form(object):
                 if d is not None and d not in renumbering:
                     renumbering[d] = k
                     k += 1
-
         # Add domains of arguments, these may include domains not
         # among integration domains
         for a in self._arguments:
