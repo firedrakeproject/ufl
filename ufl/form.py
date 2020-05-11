@@ -407,6 +407,7 @@ class Form(object):
         integration_domains = set()
         for itg in self._integrals:
             integration_domains.update(itg.ufl_domain())
+            print("extracted domains::", extract_domains(itg.integrand()))
             integration_domains.update(extract_domains(itg.integrand()))
         integration_domains = join_domains(integration_domains)
 
@@ -487,11 +488,6 @@ class Form(object):
                 if d is not None and d not in renumbering:
                     renumbering[d] = k
                     k += 1
-        from ufl.domain import Mesh
-        import sys
-        for k, i in renumbering.items():
-            if isinstance(k, Mesh):
-                sys.stdout.flush()
         return renumbering
 
     def _compute_signature(self):
