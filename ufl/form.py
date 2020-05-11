@@ -491,7 +491,6 @@ class Form(object):
         import sys
         for k, i in renumbering.items():
             if isinstance(k, Mesh):
-                print(k)
                 sys.stdout.flush()
         return renumbering
 
