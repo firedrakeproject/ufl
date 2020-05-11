@@ -194,7 +194,7 @@ class ReferenceGrad(CompoundDerivative):
             # Set _dim to the max. topological dimension and
             # pad Zero() where appropriate.
             a = tuple(d.topological_dimension() for d in domain)
-            print("max dim :", a)
+            print("mmm: ufl: max dim :", a)
             self._dim = max(a)
         else:
             self._dim = domain.topological_dimension()
