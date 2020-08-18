@@ -266,6 +266,8 @@ register_element2("Sdirect", 0, H1, "physical", (1, None), ("quadrilateral",))
 register_element2("Sdirect_Hdiv_full", 1, HDiv, "physical", (1, None), ("quadrilateral",))
 register_element2("Sdirect_Hdiv_reduced", 1, HDiv, "physical", (1, None), ("quadrilateral",))
 
+register_element2("ModifiedBR", 1, H1, "physical", (1, None), ("triangle",))
+
 
 # NOTE- the edge elements for primal mimetic spectral elements are accessed by using variant='mse' in the appropriate places
 
