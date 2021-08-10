@@ -27,7 +27,7 @@ from ufl.classes import JacobianInverse
 from ufl.classes import SpatialCoordinate
 
 from ufl.constantvalue import is_true_ufl_scalar, is_ufl_scalar
-from ufl.operators import (conditional, sign,
+from ufl.operators import (conditional, hypergeometric2F1, sign,
                            sqrt, exp, ln, cos, sin, cosh, sinh,
                            bessel_J, bessel_Y, bessel_I, bessel_K,
                            cell_avg, facet_avg)
@@ -377,6 +377,11 @@ class GenericDerivativeRuleset(MultiFunction):
         f, = o.ufl_operands
         return fp * (2.0 / sqrt(pi) * exp(-f**2))
 
+    def hyper_geometric_2f1(self, o, ap, bp, cp, xp):
+        a, b, c, x = o.ufl_operands
+        if not all((p is None or isinstance(p, Zero)) for p in (ap, bp, cp)):
+            error("Differentation of hypergeometric function only with respect to x")
+        return (a * b) / c * hypergeometric2F1(a + 1, b + 1, c + 1, x) * xp
     # --- Bessel functions
 
     def bessel_j(self, o, nup, fp):

@@ -265,6 +265,10 @@ class SumDegreeEstimator(MultiFunction):
         else:
             return a
 
+    def hyper_geometric_2f1(self, o, a, b, c, x):
+        # Heuristic
+        return x + 2
+
     def bessel_function(self, v, nu, x):
         """Using the heuristic
         degree(bessel_*(const)) == 0
