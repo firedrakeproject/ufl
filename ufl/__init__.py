@@ -324,6 +324,7 @@ from ufl.operators import rank, shape, \
     acos, asin, atan, atan_2, \
     cosh, sinh, tanh, \
     bessel_J, bessel_Y, bessel_I, bessel_K, \
+    hypergeometric2F1, \
     eq, ne, le, ge, lt, gt, And, Or, Not, \
     conditional, sign, max_value, min_value, Max, Min, \
     variable, diff, \
@@ -401,6 +402,7 @@ __all__ = [
     'acos', 'asin', 'atan', 'atan_2',
     'cosh', 'sinh', 'tanh',
     'bessel_J', 'bessel_Y', 'bessel_I', 'bessel_K',
+    'hypergeometric2F1',
     'eq', 'ne', 'le', 'ge', 'lt', 'gt', 'And', 'Or', 'Not',
     'conditional', 'sign', 'max_value', 'min_value', 'Max', 'Min',
     'variable', 'diff',

@@ -333,6 +333,19 @@ class Erf(MathFunction):
         return erf(a)
 
 
+@ufl_type(is_scalar=True, num_ops=4)
+class HyperGeometric2F1(Operator):
+    __slots__ = ()
+
+    def __init__(self, a, b, c, x):
+        if not all(is_true_ufl_scalar(arg) for arg in (a, b, c, x)):
+            error("Expecting scalar arguments.")
+        super().__init__((a, b, c, x))
+
+    def __str__(self):
+        return "hyp2F1(%s, %s, %s, %s)" % self.ufl_operands
+
+
 @ufl_type(is_abstract=True, is_scalar=True, num_ops=2)
 class BesselFunction(Operator):
     "Base class for all bessel functions"

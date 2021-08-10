@@ -27,7 +27,7 @@ from ufl.tensors import as_tensor, as_matrix, as_vector, ListTensor
 from ufl.conditional import EQ, NE, \
     AndCondition, OrCondition, NotCondition, Conditional, MaxValue, MinValue
 from ufl.algebra import Conj, Real, Imag
-from ufl.mathfunctions import Sqrt, Exp, Ln, Erf,\
+from ufl.mathfunctions import HyperGeometric2F1, Sqrt, Exp, Ln, Erf,\
     Cos, Sin, Tan, Cosh, Sinh, Tanh, Acos, Asin, Atan, Atan2,\
     BesselJ, BesselY, BesselI, BesselK
 from ufl.averaging import CellAvg, FacetAvg
@@ -666,6 +666,15 @@ def atan_2(f1, f2):
 def erf(f):
     "UFL operator: Take the error function of *f*."
     return _mathfunction(f, Erf)
+
+
+def hypergeometric2F1(a, b, c, x):
+    """Hypergeometric function of the second kind."""
+    a = as_ufl(a)
+    b = as_ufl(b)
+    c = as_ufl(c)
+    x = as_ufl(x)
+    return HyperGeometric2F1(a, b, c, x)
 
 
 def bessel_J(nu, f):
