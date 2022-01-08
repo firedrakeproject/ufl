@@ -36,7 +36,7 @@ class FiniteElement(FiniteElementBase):
                 form_degree=None,
                 quad_scheme=None,
                 variant=None):
-        """Intercepts construction to expand CG, DG, RTCE and RTCF
+        """Intercepts construction to expand CG, DG, RTXCE/F, RTCE and RTCF
         spaces on TensorProductCells."""
         if cell is not None:
             cell = as_cell(cell)
@@ -50,7 +50,7 @@ class FiniteElement(FiniteElementBase):
             family, short_name, degree, value_shape, reference_value_shape, sobolev_space, mapping = \
                 canonical_element_description(family, cell, degree, form_degree)
 
-            if family in ["RTCF", "RTCE"]:
+            if family in ["RTCF", "RTCE", "RTXCF", "RTXCE"]:
                 cell_h, cell_v = cell.sub_cells()
                 if cell_h.cellname() != "interval":
                     error("%s is available on TensorProductCell(interval, interval) only." % family)
@@ -58,14 +58,17 @@ class FiniteElement(FiniteElementBase):
                     error("%s is available on TensorProductCell(interval, interval) only." % family)
 
                 C_elt = FiniteElement("CG", "interval", degree, variant=variant)
-                D_elt = FiniteElement("DG", "interval", degree - 1, variant=variant)
+                if family in ["RTCF","RTCE"]:
+                    D_elt = FiniteElement("DG", "interval", degree - 1, variant=variant)
+                if family in ["RTXCF","RTXCE"]:
+                    D_elt = FiniteElement("DG", "interval", degree, variant=variant)
 
                 CxD_elt = TensorProductElement(C_elt, D_elt, cell=cell)
                 DxC_elt = TensorProductElement(D_elt, C_elt, cell=cell)
 
-                if family == "RTCF":
+                if family in ["RTCF","RTXCF"]:
                     return EnrichedElement(HDiv(CxD_elt), HDiv(DxC_elt))
-                if family == "RTCE":
+                if family in ["RTCE","RTXCE"]:
                     return EnrichedElement(HCurl(CxD_elt), HCurl(DxC_elt))
 
             elif family == "NCF":
