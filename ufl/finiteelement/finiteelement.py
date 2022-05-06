@@ -50,7 +50,7 @@ class FiniteElement(FiniteElementBase):
             family, short_name, degree, value_shape, reference_value_shape, sobolev_space, mapping = \
                 canonical_element_description(family, cell, degree, form_degree)
 
-            if family in ["RTCF", "RTCE"]:
+            if family in ["RTCF", "RTCE", "RTCF Trace"]:
                 cell_h, cell_v = cell.sub_cells()
                 if cell_h.cellname() != "interval":
                     error("%s is available on TensorProductCell(interval, interval) only." % family)
@@ -59,6 +59,8 @@ class FiniteElement(FiniteElementBase):
 
                 C_elt = FiniteElement("CG", "interval", degree, variant=variant)
                 D_elt = FiniteElement("DG", "interval", degree - 1, variant=variant)
+                if family == "RTCF Trace":
+                    C_elt = FiniteElement("HDiv Trace", "interval", 0, variant=variant)
 
                 CxD_elt = TensorProductElement(C_elt, D_elt, cell=cell)
                 DxC_elt = TensorProductElement(D_elt, C_elt, cell=cell)
@@ -67,6 +69,8 @@ class FiniteElement(FiniteElementBase):
                     return EnrichedElement(HDiv(CxD_elt), HDiv(DxC_elt))
                 if family == "RTCE":
                     return EnrichedElement(HCurl(CxD_elt), HCurl(DxC_elt))
+                if family == "RTCF Trace":
+                    return EnrichedElement(CxD_elt, DxC_elt)
 
             elif family == "NCF":
                 cell_h, cell_v = cell.sub_cells()
@@ -99,6 +103,22 @@ class FiniteElement(FiniteElementBase):
 
                 return EnrichedElement(HCurl(TensorProductElement(Qc_elt, Id_elt, cell=cell)),
                                        HCurl(TensorProductElement(Qd_elt, Ic_elt, cell=cell)))
+
+            elif family == "NCF Trace":
+                cell_h, cell_v = cell.sub_cells()
+                if cell_h.cellname() != "quadrilateral":
+                    error("%s is available on TensorProductCell(quadrilateral, interval) only." % family)
+                if cell_v.cellname() != "interval":
+                    error("%s is available on TensorProductCell(quadrilateral, interval) only." % family)
+
+                Qc_elt = FiniteElement("RTCF Trace", "quadrilateral", degree, variant=variant)
+                Qd_elt = FiniteElement("DQ", "quadrilateral", degree - 1, variant=variant)
+
+                Id_elt = FiniteElement("DG", "interval", degree - 1, variant=variant)
+                Ic_elt = FiniteElement("HDiv Trace", "interval", 0, variant=variant)
+
+                return EnrichedElement(TensorProductElement(Qc_elt, Id_elt, cell=cell),
+                                       TensorProductElement(Qd_elt, Ic_elt, cell=cell))
 
             elif family == "Q":
                 return TensorProductElement(*[FiniteElement("CG", c, degree, variant=variant)
