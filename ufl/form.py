@@ -141,6 +141,11 @@ class BaseForm(object, metaclass=UFLType):
             # Simplify addition with ZeroBaseForm
             return other
 
+        elif isinstance(other, Form) and not len(other.integrals()):
+            # `other` is an empty Form
+            import ipdb; ipdb.set_trace()
+            return self
+
         elif isinstance(other, BaseForm):
             # Add integrals from both forms
             return FormSum((self, 1), (other, 1))
@@ -493,6 +498,11 @@ class Form(BaseForm):
             return self
 
         elif isinstance(other, BaseForm):
+            print('\n Form __add__ \n: A: %s\t B: %s' % (self, other))
+            if not len(self.integrals()):
+                # `self` is an empty Form
+                import ipdb; ipdb.set_trace()
+                return other
             # Create form sum if form is of other type
             return FormSum((self, 1), (other, 1))
 

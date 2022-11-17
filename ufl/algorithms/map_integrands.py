@@ -41,8 +41,9 @@ def map_integrands(function, form, only_integral_type=None):
         mapped_components = [map_integrands(function, component, only_integral_type)
                              for component in form.components()]
         nonzero_components = [(component, 1) for component in mapped_components
-                              # Catch ufl.Zero and ZeroBaseForm
-                              if component != 0]
+                              # Catch ufl.Zero, ZeroBaseForm, and empty Form
+                              if component != 0 and not (isinstance(component, Form) and not len(component.integrals()))]
+        # import ipdb; ipdb.set_trace()
         return FormSum(*nonzero_components)
     elif isinstance(form, Adjoint):
         # Zeros are caught inside `Adjoint.__new__`

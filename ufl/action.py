@@ -59,9 +59,11 @@ class Action(BaseForm):
             new_arguments, _ = _get_action_form_arguments(left, right)
             return ZeroBaseForm(new_arguments)
 
-        # Check trivial case
-        if left == 0 or right == 0:
-            return 0
+        # Check empty form case
+        is_empty_form = lambda F: isinstance(F, Form) and not len(F.integrals())
+        if is_empty_form(left) or is_empty_form(right):
+            # Return an EmptyForm
+            return Form(())
 
         if isinstance(left, (FormSum, Sum)):
             # Action distributes over sums on the LHS
@@ -169,22 +171,24 @@ def _check_function_spaces(left, right):
 def _get_action_form_arguments(left, right):
     "Perform argument contraction to work out the arguments of Action"
 
+    right_args = ()
     if isinstance(right, CoefficientDerivative):
         # Action differentiation pushes differentiation through
         # right as a consequence of Leibniz formula.
-        right, *_ = right.ufl_operands
+        right, _, right_args, *_ = right.ufl_operands
+        right_args = right_args.ufl_operands
 
     coefficients = ()
     if isinstance(right, BaseForm):
-        arguments = left.arguments()[:-1] + right.arguments()[1:]
+        arguments = left.arguments()[:-1] + right.arguments()[1:] + right_args
         coefficients += right.coefficients()
     elif isinstance(right, (BaseCoefficient, Zero)):
-        arguments = left.arguments()[:-1]
+        arguments = left.arguments()[:-1] + right_args
         # For `Zero` case, Action gets simplified so updating
         # coefficients here doesn't matter
         coefficients += (right,)
     elif isinstance(right, Argument):
-        arguments = left.arguments()[:-1] + (right,)
+        arguments = left.arguments()[:-1] + (right,) + right_args
     else:
         raise TypeError
 

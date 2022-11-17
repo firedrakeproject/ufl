@@ -328,9 +328,16 @@ def derivative(form, coefficient, argument=None, coefficient_derivatives=None):
     elif isinstance(form, Action):
         # Push derivative through Action slots
         left, right = form.ufl_operands
-        dleft = derivative(left, coefficient, argument, coefficient_derivatives)
-        dright = derivative(right, coefficient, argument, coefficient_derivatives)
+        # Build arguments locally (i.e. argument numbers are based on each component)
+        left_arg, right_arg = [type(argument)(argument.ufl_function_space(),
+                                              number=len(extract_arguments(e)),
+                                              part=argument.part())
+                               for e in (left, right)]
+        dleft = derivative(left, coefficient, left_arg, coefficient_derivatives)
+        dright = derivative(right, coefficient, right_arg, coefficient_derivatives)
         # Leibniz formula
+        if isinstance(dleft, ZeroBaseForm):
+            import ipdb; ipdb.set_trace()
         return action(dleft, right) + action(left, dright)
 
     coefficients, arguments = _handle_derivative_arguments(form, coefficient,
