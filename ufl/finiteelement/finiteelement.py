@@ -71,34 +71,27 @@ class FiniteElement(FiniteElementBase):
                 if len(sub_cells) == 3:
                     if any([cell.cellname() != "interval" for cell in sub_cells]):
                         error("%s is available on TensorProductCell(interval, interval, interval) only." % family)
-
-                    C_elt = FiniteElement("CG", "interval", degree, variant=variant)
-                    D_elt = FiniteElement("DG", "interval", degree - 1, variant=variant)
-                    if family == "NCF":
-                        components = [(C_elt, D_elt, D_elt), (D_elt, C_elt, D_elt), (D_elt, D_elt, C_elt)]
-                    else:
-                        components = [(C_elt, C_elt, D_elt), (C_elt, D_elt, C_elt), (D_elt, C_elt, C_elt)]
-
+                    cell_h = TensorProductCell(*sub_cells[:-1])
+                    cell_v = sub_cells[-1]
                 elif len(sub_cells) == 2:
                     cell_h, cell_v = sub_cells
                     if cell_h.cellname() != "quadrilateral":
                         error("%s is available on TensorProductCell(quadrilateral, interval) only." % family)
                     if cell_v.cellname() != "interval":
                         error("%s is available on TensorProductCell(quadrilateral, interval) only." % family)
-
-                    Ic_elt = FiniteElement("CG", "interval", degree, variant=variant)
-                    Id_elt = FiniteElement("DG", "interval", degree - 1, variant=variant)
-                    if family == "NCF":
-                        Qc_elt = FiniteElement("RTCF", "quadrilateral", degree, variant=variant)
-                        Qd_elt = FiniteElement("DQ", "quadrilateral", degree - 1, variant=variant)
-                    else:
-                        Qc_elt = FiniteElement("Q", "quadrilateral", degree, variant=variant)
-                        Qd_elt = FiniteElement("RTCE", "quadrilateral", degree, variant=variant)
-
-                    components = [(Qc_elt, Id_elt), (Qd_elt, Ic_elt)]
                 else:
                     error("%s is available on TensorProductCell(quadrilateral, interval) only." % family)
 
+                Ic_elt = FiniteElement("CG", cell_v, degree, variant=variant)
+                Id_elt = FiniteElement("DG", cell_v, degree - 1, variant=variant)
+                if family == "NCF":
+                    Qc_elt = FiniteElement("RTCF", cell_h, degree, variant=variant)
+                    Qd_elt = FiniteElement("DQ", cell_h, degree - 1, variant=variant)
+                else:
+                    Qc_elt = FiniteElement("Q", cell_h, degree, variant=variant)
+                    Qd_elt = FiniteElement("RTCE", cell_h, degree, variant=variant)
+
+                components = [(Qc_elt, Id_elt), (Qd_elt, Ic_elt)]
                 wrapper = HDiv if family == "NCF" else HCurl
                 return EnrichedElement(*[wrapper(TensorProductElement(*factors, cell=cell)) for factors in components])
 
