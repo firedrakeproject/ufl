@@ -25,7 +25,7 @@ class FiniteElement(FiniteElementBase):
     "The basic finite element class for all simple finite elements."
     # TODO: Move these to base?
     __slots__ = ("_short_name", "_sobolev_space",
-                 "_mapping", "_variant", "_repr")
+                 "_mapping", "_variant","_basis", "_repr")
 
     def __new__(cls,
                 family,
@@ -33,7 +33,8 @@ class FiniteElement(FiniteElementBase):
                 degree=None,
                 form_degree=None,
                 quad_scheme=None,
-                variant=None):
+                variant=None,
+                basis=None):
         """Intercepts construction to expand CG, DG, RTCE and RTCF
         spaces on TensorProductCells."""
         if cell is not None:
@@ -125,7 +126,8 @@ class FiniteElement(FiniteElementBase):
                  degree=None,
                  form_degree=None,
                  quad_scheme=None,
-                 variant=None):
+                 variant=None,
+                 basis=None):
         """Create finite element.
 
         *Arguments*
@@ -156,6 +158,7 @@ class FiniteElement(FiniteElementBase):
         self._mapping = mapping
         self._short_name = short_name
         self._variant = variant
+        self._basis = basis
 
         # Finite elements on quadrilaterals and hexahedrons have an IrreducibleInt as degree
         if cell is not None:
@@ -202,7 +205,11 @@ class FiniteElement(FiniteElementBase):
         """Return the variant used to initialise the element."""
         return self._variant
 
-    def reconstruct(self, family=None, cell=None, degree=None, quad_scheme=None, variant=None):
+    def basis(self):
+        """Return the variant used to initialise the element."""
+        return self._basis
+
+    def reconstruct(self, family=None, cell=None, degree=None, quad_scheme=None, variant=None, basis=None):
         """Construct a new FiniteElement object with some properties
         replaced with new values."""
         if family is None:
@@ -215,7 +222,9 @@ class FiniteElement(FiniteElementBase):
             quad_scheme = self.quadrature_scheme()
         if variant is None:
             variant = self.variant()
-        return FiniteElement(family, cell, degree, quad_scheme=quad_scheme, variant=variant)
+        if basis is None:
+            basis = self.basis()
+        return FiniteElement(family, cell, degree, quad_scheme=quad_scheme, variant=variant, basis=basis)
 
     def __str__(self):
         "Format as string for pretty printing."
