@@ -277,7 +277,7 @@ register_element("Direct Serendipity Full H(div)", "Sdirect H(div)", 1, HDiv, "p
 register_element("Direct Serendipity Reduced H(div)", "Sdirect H(div) red", 1, HDiv, "physical", (1, None),
                  ("quadrilateral",))
 
-register_element("Provide Basis", "PB", 0, H1, "identity", (1, None), any_cell)  
+register_element("Direct Definition", "DD", 0, H1, "identity", (1, None), any_cell)  
 # NOTE- the edge elements for primal mimetic spectral elements are accessed by using variant='mse' in the appropriate places
 
 def feec_element(family, n, r, k):
