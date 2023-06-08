@@ -257,10 +257,12 @@ class Form(BaseForm):
         "_arguments",
         "_coefficients",
         "_coefficient_numbering",
+        "_other_coefficient_numbering",
         "_constant_numbering",
         "_constants",
         "_hash",
         "_signature",
+        "_other_signature",
         # --- Dict that external frameworks can place framework-specific
         #     data in to be carried with the form
         #     Never use this internally in ufl!
@@ -288,10 +290,13 @@ class Form(BaseForm):
         # Internal variables for caching form argument data
         self._coefficients = None
         self._coefficient_numbering = None
+        self._other_coefficient_numbering = None
         self._constant_numbering = None
 
         from ufl.algorithms.analysis import extract_constants
         self._constants = extract_constants(self)
+
+        # FIXME (but Firedrake doesn't use constants)
         self._constant_numbering = dict(
             (c, i) for i, c in enumerate(self._constants))
 
@@ -299,6 +304,7 @@ class Form(BaseForm):
         # first request
         self._hash = None
         self._signature = None
+        self._other_signature = None
 
         # Never use this internally in ufl!
         self._cache = {}
@@ -403,12 +409,17 @@ class Form(BaseForm):
             self._analyze_form_arguments()
         return self._coefficients
 
-    def coefficient_numbering(self):
+    def coefficient_numbering(self, renumber=True):
         """Return a contiguous numbering of coefficients in a mapping
         ``{coefficient:number}``."""
-        if self._coefficient_numbering is None:
-            self._analyze_form_arguments()
-        return self._coefficient_numbering
+        if renumber:
+            if self._coefficient_numbering is None:
+                self._coefficient_numbering = self._analyze_form_arguments(renumber)
+            return self._coefficient_numbering
+        else:
+            if self._other_coefficient_numbering is None:
+                self._other_coefficient_numbering = self._analyze_form_arguments(renumber)
+            return self._other_coefficient_numbering
 
     def constants(self):
         return self._constants
@@ -418,11 +429,17 @@ class Form(BaseForm):
         ``{constant:number}``."""
         return self._constant_numbering
 
-    def signature(self):
+    def signature(self, renumber=True):
         "Signature for use with jit cache (independent of incidental numbering of indices etc.)"
-        if self._signature is None:
-            self._compute_signature()
-        return self._signature
+        if renumber:
+            if self._signature is None:
+                self._compute_signature()
+            return self._signature
+        else:
+            if self._other_signature is None:
+                self._compute_other_signature()
+            return self._other_signature
+
 
     # --- Operator implementations ---
 
@@ -615,7 +632,7 @@ class Form(BaseForm):
                 subdomain_data[domain][it].append(sd)
         self._subdomain_data = subdomain_data
 
-    def _analyze_form_arguments(self):
+    def _analyze_form_arguments(self, renumber=True):
         "Analyze which Argument and Coefficient objects can be found in the form."
         from ufl.algorithms.analysis import extract_arguments_and_coefficients
         arguments, coefficients = extract_arguments_and_coefficients(self)
@@ -625,13 +642,17 @@ class Form(BaseForm):
             sorted(set(arguments), key=lambda x: x.number()))
         self._coefficients = tuple(
             sorted(set(coefficients), key=lambda x: x.count()))
-        self._coefficient_numbering = dict(
-            (c, i) for i, c in enumerate(self._coefficients))
+        if renumber:
+            return dict((c, i) for i, c in enumerate(self._coefficients))
+        else:
+            return dict((c, c.count()) for c in self._coefficients)
 
-    def _compute_renumbering(self):
+    def _compute_renumbering(self, renumber=True):
         # Include integration domains and coefficients in renumbering
         dn = self.domain_numbering()
-        cn = self.coefficient_numbering()
+        cn = self.coefficient_numbering(renumber)
+        # TODO
+        # cnstn = self.constant_numbering(renumber)
         cnstn = self.constant_numbering()
         renumbering = {}
         renumbering.update(dn)
@@ -668,6 +689,10 @@ class Form(BaseForm):
     def _compute_signature(self):
         from ufl.algorithms.signature import compute_form_signature
         self._signature = compute_form_signature(self, self._compute_renumbering())
+
+    def _compute_other_signature(self):
+        from ufl.algorithms.signature import compute_form_signature
+        self._other_signature = compute_form_signature(self, self._compute_renumbering(False))
 
 
 def sub_forms_by_domain(form):
