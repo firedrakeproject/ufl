@@ -1,6 +1,9 @@
 
 # -*- coding: utf-8 -*-
-"""This module defines the BaseFormOperator class, which is the base class for objects that can be seen as forms and as operators such as ExternalOperator or Interp."""
+"""This module defines the BaseFormOperator class.
+
+This is the base class for objects that can be seen as forms and as operators
+such as ExternalOperator or Interp."""
 
 # Copyright (C) 2019 Nacime Bouziani
 #
@@ -20,6 +23,7 @@ from ufl.finiteelement import FiniteElementBase
 from ufl.domain import default_domain
 from ufl.functionspace import AbstractFunctionSpace, FunctionSpace
 from ufl.referencevalue import ReferenceValue
+from ufl.utils.counted import counted_init
 
 
 @ufl_type(num_ops="varying", is_differential=True)
@@ -28,44 +32,33 @@ class BaseFormOperator(Operator, BaseForm):
     # Slots are disabled here because they cause trouble in PyDOLFIN
     # multiple inheritance pattern:
     _ufl_noslots_ = True
+    _globalcount = 0
 
-    def __init__(self, *operands, function_space, derivatives=None, result_coefficient=None, argument_slots=()):
+    def __init__(self, *operands, function_space, derivatives=None,
+                 argument_slots=(), count=None):
         r"""
-        :param operands: operands on which acts the operator.
-        :param function_space: the :class:`.FunctionSpace`,
-               or :class:`.MixedFunctionSpace` on which to build this :class:`Function`.
+        :param operands: operands on which operator acts.
+        :param function_space: the :class:`.FunctionSpace`, or
+               :class:`.MixedFunctionSpace` on which to build the output
+               :class:`Function`.
         :param derivatives: tuple specifiying the derivative multiindex.
-        :param result_coefficient: ufl.Coefficient associated to the operator representing what is produced by the operator
-        :param argument_slots: tuple composed containing expressions with ufl.Argument or ufl.Coefficient objects.
+        :param argument_slots: tuple composed containing expressions with
+            ufl.Argument or ufl.Coefficient objects.
+        :param count: a globally unique index.
         """
-
+        
+        counted_init(self, count, BaseFormOperator)
         BaseForm.__init__(self)
         ufl_operands = tuple(map(as_ufl, operands))
         argument_slots = tuple(map(as_ufl, argument_slots))
         Operator.__init__(self, ufl_operands)
 
-        # -- Function space -- #
-        if isinstance(function_space, FiniteElementBase):
-            # For legacy support for .ufl files using cells, we map
-            # the cell to The Default Mesh
-            element = function_space
-            domain = default_domain(element.cell())
-            function_space = FunctionSpace(domain, element)
-        elif not isinstance(function_space, AbstractFunctionSpace):
-            raise ValueError("Expecting a FunctionSpace or FiniteElement.")
+        if not isinstance(function_space, AbstractFunctionSpace):
+            raise ValueError("Expecting a FunctionSpace.")
 
-        # -- Derivatives -- #
-        # Some BaseFormOperator does have derivatives (e.g. ExternalOperator)
-        # while other don't since they are fully determined by their
-        # argument slots (e.g. Interp)
+        # Enable the class to represent the base operator or any of its
+        # derivatives.
         self.derivatives = derivatives
-
-        # Produce the resulting Coefficient: Is that really needed?
-        if result_coefficient is None:
-            result_coefficient = Coefficient(function_space)
-        elif not isinstance(result_coefficient, (Coefficient, ReferenceValue)):
-            raise TypeError('Expecting a Coefficient and not %s', type(result_coefficient))
-        self._result_coefficient = result_coefficient
 
         # -- Argument slots -- #
         if len(argument_slots) == 0:
@@ -81,12 +74,8 @@ class BaseFormOperator(Operator, BaseForm):
     ufl_free_indices = ()
     ufl_index_dimensions = ()
 
-    def result_coefficient(self, unpack_reference=True):
-        "Returns the coefficient produced by the external operator"
-        result_coefficient = self._result_coefficient
-        if unpack_reference and isinstance(result_coefficient, ReferenceValue):
-            return result_coefficient.ufl_operands[0]
-        return result_coefficient
+    def count(self):
+        return self._count
 
     def argument_slots(self, outer_form=False):
         r"""Returns a tuple of expressions containing argument and coefficient based expressions.
@@ -127,38 +116,24 @@ class BaseFormOperator(Operator, BaseForm):
         self._arguments = tuple(sorted(OrderedDict.fromkeys(arguments), key=lambda x: x.number()))
         self._coefficients = tuple(sorted(set(coefficients), key=lambda x: x.count()))
 
-    def count(self):
-        "Returns the count associated to the coefficient produced by the external operator"
-        return self._count
-
-    @property
-    def _count(self):
-        return self.result_coefficient()._count
-
     @property
     def ufl_shape(self):
         "Returns the UFL shape of the coefficient.produced by the operator"
-        return self.result_coefficient()._ufl_shape
+        return self._argument_slots[0]._ufl_shape
 
     def ufl_function_space(self):
-        "Returns the ufl function space associated to the operator"
-        return self.result_coefficient()._ufl_function_space
+        "Returns the ufl function space associated with the operator"
+        return self._argument_slots[0].function_space()
 
     def _ufl_expr_reconstruct_(self, *operands, function_space=None, derivatives=None,
-                               result_coefficient=None, argument_slots=None):
+                               argument_slots=None):
         "Return a new object of the same type with new operands."
         deriv_multiindex = derivatives or self.derivatives
 
-        if deriv_multiindex != self.derivatives:
-            # If we are constructing a derivative
-            corresponding_coefficient = None
-        else:
-            corresponding_coefficient = result_coefficient or self._result_coefficient
-
-        return type(self)(*operands, function_space=function_space or self.ufl_function_space(),
-                          derivatives=deriv_multiindex,
-                          result_coefficient=corresponding_coefficient,
-                          argument_slots=argument_slots or self.argument_slots())
+        return type(self)(
+            *operands,
+            function_space=function_space or self.ufl_function_space(),
+            derivatives=deriv_multiindexå)
 
     def __repr__(self):
         "Default repr string construction for external operators."

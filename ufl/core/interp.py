@@ -31,25 +31,56 @@ class Interp(BaseFormOperator):
         r""" Symbolic representation of the interpolation operator.
 
         :arg expr: a UFL expression to interpolate.
-        :arg v: the :class:`.FunctionSpace` to interpolate into or the :class:`.Coargument`
-                defined on the dual of the :class:`.FunctionSpace` to interpolate into.
-        :param result_coefficient: the :class:`.Coefficient` representing what is produced by the operator
+        :arg v: the :class:`.FunctionSpace` to interpolate into, or the
+            :class:`.Coargument` defined on the dual of that space, or a
+            :class:`.Cofunction` in that space.
+        :param result_coefficient: the :class:`.Coefficient` representing what
+            is produced by the operator
+
+        The result of evaluating the interpolation operator depends on the
+        nature of `expr` and `v`. 
+
+        If `v` is a :class:`.FunctionSpace` then it will be interpreted as a
+        :func:`ufl.Coargument` with number 0 (a coTestFunction).
+        
+        Interpolate evaluates `v(expr)`. Note `v` is a dual argument or
+        coefficient.
+
+        There are a number of cases:
+
+        1. `v` is a :class:`.Cofunction` and `expr` contains no arguments.
+           `expr` will be interpolated into the primal space corresponding to
+           `v`. `v` will act on the result producing a scalar.
+        2. `v` is a :class:`.Coargument` and `expr` contains no arguments.
+            `expr` will be interpolated into the primal space corresponding to
+            `v`. The result will be a :class:`.Coefficient`.
+        3. `v` is a :class:`.Cofunction` and `expr` contains an argument. The
+           adjoint of case 2 is performed. The result is a `Cofunction` in the
+           dual space to the space containing the argument.
+        4. `v` is a `Coargument` with number 0 and `expr` contains an argument
+           with number 1. The corresponding interpolation operator is produced.
+           The result is a `ufl.Matrix` mapping from the trial space to the
+           primal space corresponding to `v`.
+        5. `v` is a `Coargument` with number 1 and `expr` contains an argument
+           with number 0. The corresponding adjoint interpolation operator is
+           produced. The result is a `ufl.Matrix` mapping from the dual of the
+           trial space to the space containing `v` (which is also a dual
+           space). 
+
+        Note that UFL itself contains no mechanism for performing the
+        evaluation, this is the responsibility of the numerical package using
+        UFL.
         """
 
-        # This check could be more rigorous.
         dual_args = (Coargument, Cofunction, Form)
 
-        if isinstance(v, FiniteElementBase):
-            element = v
-            domain = element.cell()
-            function_space = FunctionSpace(domain, element)
-            v = Argument(function_space.dual(), 0)
-        elif isinstance(v, AbstractFunctionSpace):
+        if isinstance(v, AbstractFunctionSpace):
             if is_dual(v):
                 raise ValueError('Expecting a primal function space.')
             v = Argument(v.dual(), 0)
         elif not isinstance(v, dual_args):
-            raise ValueError("Expecting the second argument to be FunctionSpace, FiniteElement or dual.")
+            raise ValueError(
+                "Expecting the second argument to be FunctionSpace, or dual.")
 
         expr = as_ufl(expr)
         if isinstance(expr, dual_args):
