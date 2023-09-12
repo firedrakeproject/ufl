@@ -36,6 +36,9 @@ class FormData(object):
             # Coefficients
             ("Number of coefficients", self.num_coefficients),
             ("Coefficients", lstr(self.reduced_coefficients)),
+            # Subspaces
+            ("Number of subspaces", self.num_subspaces),
+            ("Subspaces", lstr(self.reduced_subspaces)),
             # Elements
             ("Unique elements", estr(self.unique_elements)),
             ("Unique sub elements", estr(self.unique_sub_elements)),
