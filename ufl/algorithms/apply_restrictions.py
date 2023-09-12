@@ -106,6 +106,7 @@ class RestrictionPropagator(MultiFunction):
 
     multi_index = _ignore_restriction
     label = _ignore_restriction
+    subspace = _ignore_restriction
 
     # Default: Literals should ignore restriction
     constant_value = _ignore_restriction
