@@ -31,7 +31,7 @@ from ufl.operators import (bessel_I, bessel_J, bessel_K, bessel_Y, cell_avg,
                            sin, sinh, sqrt)
 from ufl.tensors import (as_scalar, as_scalars, as_tensor, unit_indexed_tensor,
                          unwrap_list_tensor)
-
+from ufl.projected import Projected
 from ufl.form import ZeroBaseForm
 # TODO: Add more rulesets?
 # - DivRuleset
@@ -68,6 +68,7 @@ class GenericDerivativeRuleset(MultiFunction):
         return o
     label = non_differentiable_terminal
     multi_index = non_differentiable_terminal
+    subspace = non_differentiable_terminal
 
     # --- Helper functions for creating zeros with the right shapes
 
@@ -184,6 +185,12 @@ class GenericDerivativeRuleset(MultiFunction):
         else:
             op = Indexed(Ap, ii)
         return op
+
+    def projected(self, o, Ap, _subspace):
+        if isinstance(Ap, Zero):
+            return self.independent_operator(o)
+        else:
+            return Projected(Ap, _subspace)
 
     def list_tensor(self, o, *dops):
         return ListTensor(*dops)

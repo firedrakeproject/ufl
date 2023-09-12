@@ -10,7 +10,7 @@ from ufl import *
 from ufl.algorithms import compute_form_data
 
 
-def test_masked_one_form():
+def test_projected_one_form():
     cell = triangle
     element = VectorElement("Lagrange", cell, 1)
     domain = Mesh(cell)
