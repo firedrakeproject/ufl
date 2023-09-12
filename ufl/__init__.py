@@ -281,12 +281,18 @@ from ufl.finiteelement.elementlist import register_element, show_elements
 # Function spaces
 from ufl.functionspace import FunctionSpace, MixedFunctionSpace
 
+# Subspaces
+from ufl.subspace import Subspace
+
 # Arguments
 from ufl.argument import Argument, Coargument, TestFunction, TrialFunction, Arguments, TestFunctions, TrialFunctions
 
 # Coefficients
 from ufl.coefficient import Coefficient, Cofunction, Coefficients
 from ufl.constant import Constant, VectorConstant, TensorConstant
+
+# Projected
+from ufl.projected import Projected
 
 # Matrices
 from ufl.matrix import Matrix
@@ -367,6 +373,7 @@ __all__ = [
     'BrokenElement', "WithMapping",
     'register_element', 'show_elements',
     'FunctionSpace', 'MixedFunctionSpace',
+    'Projected', 'Subspace',
     'Argument', 'Coargument', 'TestFunction', 'TrialFunction',
     'Arguments', 'TestFunctions', 'TrialFunctions',
     'Coefficient', 'Cofunction', 'Coefficients',
