@@ -324,34 +324,46 @@ def compute_form_data(form,
     # Most of the heavy lifting is done above in group_form_integrals.
     self.integral_data = build_integral_data(form.integrals())
 
-    # --- Create replacements for arguments and coefficients
+    # --- Create replacements for arguments, coefficients, and subspaces
 
-    # Figure out which form coefficients each integral should enable
+    # Figure out which form coefficients/subspaces each integral should enable
     for itg_data in self.integral_data:
         itg_coeffs = set()
+        itg_subspaces = set()
         # Get all coefficients in integrand
         for itg in itg_data.integrals:
             itg_coeffs.update(extract_coefficients(itg.integrand()))
+            itg_subspaces.update(extract_subspaces(itg.integrand()))
         # Store with IntegralData object
         itg_data.integral_coefficients = itg_coeffs
+        itg_data.integral_subspaces = itg_subspaces
 
-    # Figure out which coefficients from the original form are
+    # Figure out which coefficients/subspaces from the original form are
     # actually used in any integral (Differentiation may reduce the
-    # set of coefficients w.r.t. the original form)
+    # set of coefficients/subspaces w.r.t. the original form)
     reduced_coefficients_set = set()
+    reduced_subspaces_set = set()
     for itg_data in self.integral_data:
         reduced_coefficients_set.update(itg_data.integral_coefficients)
+        reduced_subspaces_set.update(itg_data.integral_subspaces)
     self.reduced_coefficients = sorted(reduced_coefficients_set,
                                        key=lambda c: c.count())
+    self.reduced_subspaces = sorted(reduced_subspaces_set,
+                                    key=lambda s: s.count())
     self.num_coefficients = len(self.reduced_coefficients)
+    self.num_subspaces = len(self.reduced_subspaces)
     self.original_coefficient_positions = [i for i, c in enumerate(self.original_form.coefficients())
                                            if c in self.reduced_coefficients]
+    self.original_subspace_positions = [i for i, s in enumerate(self.original_form.subspaces())
+                                        if s in self.reduced_subspaces]
 
-    # Store back into integral data which form coefficients are used
+    # Store back into integral data which form coefficients/subspaces are used
     # by each integral
     for itg_data in self.integral_data:
         itg_data.enabled_coefficients = [bool(coeff in itg_data.integral_coefficients)
                                          for coeff in self.reduced_coefficients]
+        itg_data.enabled_subspaces = [bool(subsp in itg_data.integral_subspaces)
+                                      for subsp in self.reduced_subspaces]
 
     # --- Collect some trivial data
 
