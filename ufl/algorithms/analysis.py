@@ -17,6 +17,7 @@ from ufl.utils.sorting import sorted_by_count, topological_sorting
 from ufl.core.terminal import Terminal
 from ufl.argument import BaseArgument
 from ufl.coefficient import BaseCoefficient
+from ufl.subspace import Subspace
 from ufl.constant import Constant
 from ufl.form import BaseForm, Form
 from ufl.algorithms.traversal import iter_expressions
@@ -103,22 +104,29 @@ def extract_coefficients(a):
     return sorted_by_count(extract_type(a, BaseCoefficient))
 
 
+def extract_subspaces(a):
+    """Build a sorted list of all subspaces in a,
+    which can be a BaseForm, Integral or Expr."""
+    return sorted_by_count(extract_type(a, Subspace))
+
+
 def extract_constants(a):
     """Build a sorted list of all constants in a"""
     return sorted_by_count(extract_type(a, Constant))
 
 
-def extract_arguments_and_coefficients(a):
-    """Build two sorted lists of all arguments and coefficients
+def extract_arguments_coefficients_subspaces(a):
+    """Build two sorted lists of all arguments and coefficients/subspaces
     in a, which can be BaseForm, Integral or Expr."""
 
     # This function is faster than extract_arguments + extract_coefficients
     # for large forms, and has more validation built in.
 
     # Extract lists of all BaseArgument and BaseCoefficient instances
-    base_coeff_and_args = extract_type(a, (BaseArgument, BaseCoefficient))
-    arguments = [f for f in base_coeff_and_args if isinstance(f, BaseArgument)]
-    coefficients = [f for f in base_coeff_and_args if isinstance(f, BaseCoefficient)]
+    base_objects = extract_type(a, (BaseArgument, BaseCoefficient, Subspace))
+    arguments = [f for f in base_objects if isinstance(f, BaseArgument)]
+    coefficients = [f for f in base_objects if isinstance(f, BaseCoefficient)]
+    subspaces = [f for f in base_objects if isinstance(f, Subspace)]
 
     # Build number,part: instance mappings, should be one to one
     bfnp = dict((f, (f.number(), f.part())) for f in arguments)
@@ -135,16 +143,24 @@ def extract_arguments_and_coefficients(a):
             "Found different coefficients with same counts.\n"
             "The arguments found are:\n" + "\n".join(f"  {c}" for c in coefficients))
 
+    # Build count: instance mappings, should be one to one
+    fcounts = dict((f, f.count()) for f in subspaces)
+    if len(fcounts) != len(set(fcounts.values())):
+        raise ValueError(
+            "Found different Subspaces with same counts.\n"
+            "The Subspaces found are:\n" + "\n".join(f"  {s}" for s in subspaces))
+
     # Passed checks, so we can safely sort the instances by count
     arguments = _sorted_by_number_and_part(arguments)
     coefficients = sorted_by_count(coefficients)
+    subspaces = sorted_by_count(subspaces)
 
-    return arguments, coefficients
+    return arguments, coefficients, subspaces
 
 
 def extract_elements(form):
     "Build sorted tuple of all elements used in form."
-    args = chain(*extract_arguments_and_coefficients(form))
+    args = chain(*extract_arguments_coefficients_subspaces(form))
     return tuple(f.ufl_element() for f in args)
 
 

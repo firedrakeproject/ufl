@@ -113,9 +113,10 @@ def _compute_max_subdomain_ids(integral_data):
     return max_subdomain_ids
 
 
-def _compute_form_data_elements(self, arguments, coefficients, domains):
+def _compute_form_data_elements(self, arguments, coefficients, subspaces, domains):
     self.argument_elements = tuple(f.ufl_element() for f in arguments)
     self.coefficient_elements = tuple(f.ufl_element() for f in coefficients)
+    self.subspace_elements = tuple(s.ufl_element() for s in subspaces)
     self.coordinate_elements = tuple(domain.ufl_coordinate_element() for domain in domains)
 
     # TODO: Include coordinate elements from argument and coefficient
@@ -127,7 +128,7 @@ def _compute_form_data_elements(self, arguments, coefficients, domains):
     #       almost working, with the introduction of the coordinate
     #       elements here.
 
-    all_elements = self.argument_elements + self.coefficient_elements + self.coordinate_elements
+    all_elements = self.argument_elements + self.coefficient_elements + self.subspace_elements + self.coordinate_elements
     all_sub_elements = extract_sub_elements(all_elements)
 
     self.unique_elements = unique_tuple(all_elements)
@@ -165,12 +166,16 @@ def _check_form_arity(preprocessed_form):
         raise ValueError("All terms in form must have same rank.")
 
 
-def _build_object_replace_map(object_type, objects, element_mapping=None):
+def _build_object_replace_map(objects, element_mapping=None):
     """Create new Coefficient/Subspace objects
     with count starting at 0. Return mapping from old
     to new objects, and lists of the new objects."""
-    if object_type is not in [Coefficient, Subspace]:
-        raise ValueError(f"{object_type} not in {Coefficient, Subspace}.")
+    if all(isinstance(o, Coefficient) for o in objects):
+        object_type = Coefficient
+    elif all(isinstance(o, Subspace) for o in objects):
+        object_type = Subspace
+    else:
+        raise ValueError(f"objects must either be all Coefficents or Subspaces.")
     if element_mapping is None:
         element_mapping = {}
 
@@ -391,16 +396,18 @@ def compute_form_data(form,
     # objects with canonical numbering as well as completed cells and
     # elements
     renumbered_coefficients, function_replace_map = \
-        _build_object_replace_map(Coefficient,
-                                  self.reduced_coefficients,
-                                  self.element_replace_map)
+        _build_object_replace_map(self.reduced_coefficients, self.element_replace_map)
     self.function_replace_map = function_replace_map
+    renumbered_subspaces, subspace_replace_map = \
+        _build_object_replace_map(self.reduced_subspaces, self.element_replace_map)
+    self.subspace_replace_map = subspace_replace_map
 
     # --- Store various lists of elements and sub elements (adds
     #     members to self)
     _compute_form_data_elements(self,
                                 self.original_form.arguments(),
                                 renumbered_coefficients,
+                                renumbered_subspaces,
                                 self.original_form.ufl_domains())
 
     # --- Store number of domains for integral types

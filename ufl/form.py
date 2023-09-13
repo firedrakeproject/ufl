@@ -260,6 +260,8 @@ class Form(BaseForm):
         "_arguments",
         "_coefficients",
         "_coefficient_numbering",
+        "_subspaces",
+        "_subspace_numbering",
         "_constants",
         "_constant_numbering",
         "_terminal_numbering",
@@ -292,6 +294,8 @@ class Form(BaseForm):
         # Internal variables for caching form argument data
         self._coefficients = None
         self._coefficient_numbering = None
+        self._subspaces = None
+        self._subspace_numbering = None
         self._constant_numbering = None
         self._terminal_numbering = None
 
@@ -328,7 +332,7 @@ class Form(BaseForm):
     def ufl_domains(self):
         """Return the geometric integration domains occuring in the form.
 
-        NB! This does not include domains of coefficients defined on other meshes.
+        NB! This does not include domains of coefficients/subspaces defined on other meshes.
 
         The return type is a tuple even if only a single domain exists.
         """
@@ -349,7 +353,7 @@ class Form(BaseForm):
 
         Fails if multiple domains are found.
 
-        NB! This does not include domains of coefficients defined on
+        NB! This does not include domains of coefficients/subspaces defined on
         other meshes, look at form data for that additional
         information.
 
@@ -419,6 +423,26 @@ class Form(BaseForm):
                 if isinstance(expr, Coefficient)
             }
         return self._coefficient_numbering
+
+    def subspaces(self):
+        "Return all ``Subspace`` objects found in form."
+        if self._subspaces is None:
+            self._analyze_form_arguments()
+        return self._subspaces
+
+    def subspace_numbering(self):
+        """Return a contiguous numbering of subspaces in a mapping
+        ``{subspace:number}``."""
+        # cyclic import
+        from ufl.subspace import Subspace
+
+        if self._subspace_numbering is None:
+            self._subspace_numbering = {
+                expr: num
+                for expr, num in self.terminal_numbering().items()
+                if isinstance(expr, Subspace)
+            }
+        return self._subspace_numbering
 
     def constants(self):
         return self._constants
@@ -629,7 +653,7 @@ class Form(BaseForm):
         # Make canonically ordered list of the domains
         self._integration_domains = sort_domains(integration_domains)
 
-        # TODO: Not including domains from coefficients and arguments
+        # TODO: Not including domains from coefficients/subspaces and arguments
         # here, may need that later
         self._domain_numbering = dict((d, i) for i, d in enumerate(self._integration_domains))
 
@@ -656,15 +680,17 @@ class Form(BaseForm):
         self._subdomain_data = subdomain_data
 
     def _analyze_form_arguments(self):
-        "Analyze which Argument and Coefficient objects can be found in the form."
-        from ufl.algorithms.analysis import extract_arguments_and_coefficients
-        arguments, coefficients = extract_arguments_and_coefficients(self)
+        "Analyze which Argument and Coefficient/Subspace objects can be found in the form."
+        from ufl.algorithms.analysis import extract_arguments_coefficients_subspaces
+        arguments, coefficients, subspaces = extract_arguments_coefficients_subspaces(self)
 
-        # Define canonical numbering of arguments and coefficients
+        # Define canonical numbering of arguments and coefficients/subspaces
         self._arguments = tuple(
             sorted(set(arguments), key=lambda x: x.number()))
         self._coefficients = tuple(
             sorted(set(coefficients), key=lambda x: x.count()))
+        self._subspaces = tuple(
+            sorted(set(subspaces), key=lambda x: x.count()))
 
     def _compute_renumbering(self):
         # Include integration domains and coefficients in renumbering
@@ -674,10 +700,10 @@ class Form(BaseForm):
         renumbering.update(dn)
         renumbering.update(tn)
 
-        # Add domains of coefficients, these may include domains not
+        # Add domains of coefficients/subspaces, these may include domains not
         # among integration domains
         k = len(dn)
-        for c in self.coefficients():
+        for c in self.coefficients() + self.subspaces():
             d = extract_unique_domain(c)
             if d is not None and d not in renumbering:
                 renumbering[d] = k
