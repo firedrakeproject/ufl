@@ -60,7 +60,8 @@ def _compute_element_mapping(form):
 
     # Extract all elements and include subelements of mixed elements
     elements = [obj.ufl_element() for obj in chain(form.arguments(),
-                                                   form.coefficients())]
+                                                   form.coefficients(),
+                                                   form.subspaces())]
     elements = extract_sub_elements(elements)
 
     # Try to find a common degree for elements
@@ -164,16 +165,18 @@ def _check_form_arity(preprocessed_form):
         raise ValueError("All terms in form must have same rank.")
 
 
-def _build_coefficient_replace_map(coefficients, element_mapping=None):
-    """Create new Coefficient objects
+def _build_object_replace_map(object_type, objects, element_mapping=None):
+    """Create new Coefficient/Subspace objects
     with count starting at 0. Return mapping from old
     to new objects, and lists of the new objects."""
+    if object_type is not in [Coefficient, Subspace]:
+        raise ValueError(f"{object_type} not in {Coefficient, Subspace}.")
     if element_mapping is None:
         element_mapping = {}
 
-    new_coefficients = []
+    new_objects = []
     replace_map = {}
-    for i, f in enumerate(coefficients):
+    for i, f in enumerate(objects):
         old_e = f.ufl_element()
         new_e = element_mapping.get(old_e, old_e)
         # XXX: This is a hack to ensure that if the original
@@ -182,8 +185,8 @@ def _build_coefficient_replace_map(coefficients, element_mapping=None):
         # always have a domain.
         if f.ufl_domain() is not None:
             new_e = FunctionSpace(f.ufl_domain(), new_e)
-        new_f = Coefficient(new_e, count=i)
-        new_coefficients.append(new_f)
+        new_f = object_type(new_e, count=i)
+        new_objects.append(new_f)
         replace_map[f] = new_f
 
     return new_coefficients, replace_map
@@ -384,12 +387,13 @@ def compute_form_data(form,
     # points.
     self.element_replace_map = _compute_element_mapping(self.original_form)
 
-    # Mappings from elements and coefficients that reside in form to
+    # Mappings from elements and coefficients/subspaces that reside in form to
     # objects with canonical numbering as well as completed cells and
     # elements
     renumbered_coefficients, function_replace_map = \
-        _build_coefficient_replace_map(self.reduced_coefficients,
-                                       self.element_replace_map)
+        _build_object_replace_map(Coefficient,
+                                  self.reduced_coefficients,
+                                  self.element_replace_map)
     self.function_replace_map = function_replace_map
 
     # --- Store various lists of elements and sub elements (adds
