@@ -110,7 +110,7 @@ class BaseSubspace(Counted):
 
 
 @ufl_type()
-class Subspace(Terminal, BaseSubspace]):
+class Subspace(Terminal, BaseSubspace):
     """UFL terminal type: Representation of a subspace."""
 
     _ufl_noslots_ = True
