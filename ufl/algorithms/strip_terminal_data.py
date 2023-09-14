@@ -3,7 +3,7 @@
 data-carrying objects have been extracted to a mapping."""
 
 from ufl.classes import Form, Integral
-from ufl.classes import Argument, Coefficient, Constant
+from ufl.classes import Argument, Coefficient, Subspace, Constant
 from ufl.classes import FunctionSpace, TensorProductFunctionSpace, MixedFunctionSpace
 from ufl.classes import Mesh, MeshView, TensorProductMesh
 from ufl.algorithms.replace import replace
@@ -23,6 +23,11 @@ class TerminalStripper(MultiFunction):
 
     def coefficient(self, o):
         o_new = Coefficient(strip_function_space(o.ufl_function_space()),
+                            o.count())
+        return self.mapping.setdefault(o, o_new)
+
+    def subspace(self, o):
+        o_new = Subspace(strip_function_space(o.ufl_function_space()),
                             o.count())
         return self.mapping.setdefault(o, o_new)
 
@@ -118,4 +123,4 @@ def strip_domain(domain):
         meshes = [strip_domain(mesh) for mesh in domain.ufl_meshes()]
         return TensorProductMesh(meshes, domain.ufl_id())
     else:
-        raise NotImplementedError(f"{type(domain)} cannot be stripped")
+        raise NotImplemen`tedError(f"{type(domain)} cannot be stripped")

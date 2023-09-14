@@ -15,6 +15,7 @@ from ufl.core.expr import ufl_err_str
 from ufl.form import Form
 from ufl.argument import Argument
 from ufl.coefficient import Coefficient
+from ufl.subspace import Subspace
 from ufl.constantvalue import is_true_ufl_scalar
 
 # UFL algorithms
@@ -52,9 +53,10 @@ def validate_form(form):  # TODO: Can we make this return a list of errors inste
     elif len(cells) > 1:
         errors.append(f"Multiple cell definitions in form: {cells}")
 
-    # Check that no Coefficient or Argument instance have the same
+    # Check that no Coefficient/Subspace or Argument instance have the same
     # count unless they are the same
     coefficients = {}
+    subspaces = {}
     arguments = {}
     for e in iter_expressions(form):
         for f in traverse_unique_terminals(e):
@@ -67,6 +69,16 @@ def validate_form(form):  # TODO: Can we make this return a list of errors inste
                                       f"same count: {f} and {g}.")
                 else:
                     coefficients[c] = f
+
+            if isinstance(f, Subspace):
+                c = f.count()
+                if c in subspaces:
+                    g = subspaces[c]
+                    if f is not g:
+                        errors.append("Found different Subspaces with "
+                                      f"same count: {f} and {g}.")
+                else:
+                    subspaces[c] = f
 
             elif isinstance(f, Argument):
                 n = f.number()

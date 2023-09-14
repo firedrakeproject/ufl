@@ -17,6 +17,7 @@ from functools import cmp_to_key
 from ufl.core.expr import Expr
 from ufl.argument import Argument
 from ufl.coefficient import Coefficient
+from ufl.subspace import Subspace
 from ufl.core.multiindex import FixedIndex, MultiIndex
 from ufl.variable import Label
 
@@ -61,7 +62,7 @@ def _cmp_label(a, b):
 
 
 def _cmp_coefficient(a, b):
-    # It's ok to compare relative counts for Coefficients,
+    # It's ok to compare relative counts for Coefficients/Subspaces,
     # since their ordering is a property of the form
     x, y = a._count, b._count
     if x < y:
@@ -97,6 +98,7 @@ _terminal_cmps = [_cmp_terminal_by_repr] * Expr._ufl_num_typecodes_
 _terminal_cmps[MultiIndex._ufl_typecode_] = _cmp_multi_index
 _terminal_cmps[Argument._ufl_typecode_] = _cmp_argument
 _terminal_cmps[Coefficient._ufl_typecode_] = _cmp_coefficient
+_terminal_cmps[Subspace._ufl_typecode_] = _cmp_coefficient
 _terminal_cmps[Label._ufl_typecode_] = _cmp_label
 
 
