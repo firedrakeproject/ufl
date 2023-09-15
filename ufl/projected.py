@@ -3,6 +3,7 @@
 
 from ufl.constantvalue import Zero
 from ufl.core.ufl_type import ufl_type
+from ufl.core.expr import Expr, ufl_err_str
 from ufl.core.operator import Operator
 from ufl.subspace import Subspace
 from ufl.precedence import parstr

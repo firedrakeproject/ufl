@@ -13,9 +13,9 @@ from itertools import chain
 
 from ufl.utils.sequences import max_degree
 
-from ufl.classes import GeometricFacetQuantity, Coefficient, Form, FunctionSpace
+from ufl.classes import GeometricFacetQuantity, Coefficient, Subspace, Form, FunctionSpace
 from ufl.corealg.traversal import traverse_unique_terminals
-from ufl.algorithms.analysis import extract_coefficients, extract_sub_elements, unique_tuple
+from ufl.algorithms.analysis import extract_coefficients, extract_subspaces, extract_sub_elements, unique_tuple
 from ufl.algorithms.formdata import FormData
 from ufl.algorithms.formtransformations import compute_form_arities
 from ufl.algorithms.check_arities import check_form_arity
@@ -128,7 +128,8 @@ def _compute_form_data_elements(self, arguments, coefficients, subspaces, domain
     #       almost working, with the introduction of the coordinate
     #       elements here.
 
-    all_elements = self.argument_elements + self.coefficient_elements + self.subspace_elements + self.coordinate_elements
+    all_elements = self.argument_elements + self.coefficient_elements + \
+        self.subspace_elements + self.coordinate_elements
     all_sub_elements = extract_sub_elements(all_elements)
 
     self.unique_elements = unique_tuple(all_elements)
@@ -175,7 +176,7 @@ def _build_object_replace_map(objects, element_mapping=None):
     elif all(isinstance(o, Subspace) for o in objects):
         object_type = Subspace
     else:
-        raise ValueError(f"objects must either be all Coefficents or Subspaces.")
+        raise ValueError("objects must either be all Coefficents or Subspaces.")
     if element_mapping is None:
         element_mapping = {}
 
@@ -194,7 +195,7 @@ def _build_object_replace_map(objects, element_mapping=None):
         new_objects.append(new_f)
         replace_map[f] = new_f
 
-    return new_coefficients, replace_map
+    return new_objects, replace_map
 
 
 def attach_estimated_degrees(form):

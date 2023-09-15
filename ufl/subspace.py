@@ -5,11 +5,8 @@ from ufl.core.ufl_type import ufl_type
 from ufl.core.terminal import Terminal
 from ufl.finiteelement import FiniteElementBase
 from ufl.domain import default_domain
-from ufl.functionspace import AbstractFunctionSpace, FunctionSpace, MixedFunctionSpace
-from ufl.form import BaseForm
-from ufl.split_functions import split
+from ufl.functionspace import AbstractFunctionSpace, FunctionSpace
 from ufl.utils.counted import Counted
-from ufl.duals import is_primal, is_dual
 
 # --- The Subspace class represents a subspace in a form ---
 

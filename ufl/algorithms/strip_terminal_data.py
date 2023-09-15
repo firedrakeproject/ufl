@@ -28,7 +28,7 @@ class TerminalStripper(MultiFunction):
 
     def subspace(self, o):
         o_new = Subspace(strip_function_space(o.ufl_function_space()),
-                            o.count())
+                         o.count())
         return self.mapping.setdefault(o, o_new)
 
     def constant(self, o):
@@ -123,4 +123,4 @@ def strip_domain(domain):
         meshes = [strip_domain(mesh) for mesh in domain.ufl_meshes()]
         return TensorProductMesh(meshes, domain.ufl_id())
     else:
-        raise NotImplemen`tedError(f"{type(domain)} cannot be stripped")
+        raise NotImplementedError(f"{type(domain)} cannot be stripped")
