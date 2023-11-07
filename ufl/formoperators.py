@@ -311,7 +311,7 @@ def derivative(form, coefficient, argument=None, coefficient_derivatives=None):
         args = [(derivative(component, coefficient, argument, coefficient_derivatives), weight)
                 for component, weight in zip(components, weights)
                 if coefficient in component.coefficients()]
-        args += [(component, derivative(weight, coefficient, argument, coefficient_derivatives))
+        args += [(component * derivative(weight, coefficient, argument, coefficient_derivatives)), 1
                  for component, weight in zip(components, weights)
                  if hasattr(weight, "coefficients") and coefficient in weight.coefficients()]
         if len(args) == 1:
