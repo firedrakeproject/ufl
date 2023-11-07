@@ -304,9 +304,21 @@ def derivative(form, coefficient, argument=None, coefficient_derivatives=None):
     ``Coefficient`` instances to their derivatives w.r.t. *coefficient*.
     """
     if isinstance(form, FormSum):
-        # Distribute derivative over FormSum components
-        return FormSum(*[(derivative(component, coefficient, argument, coefficient_derivatives), 1)
-                         for component in form.components()])
+        # Distribute derivative over FormSum components and weights that depend on coefficient
+        weights = form.weights()
+        components = form.components()
+        # Leibniz formula
+        args = [(derivative(component, coefficient, argument, coefficient_derivatives), weight)
+                for component, weight in zip(components, weights)
+                if coefficient in component.coefficients()]
+        args += [(component, derivative(weight, coefficient, argument, coefficient_derivatives))
+                 for component, weight in zip(components, weights)
+                 if hasattr(weight, "coefficients") and coefficient in weight.coefficients()]
+        if len(args) == 1:
+            component, weight = args[0]
+            return weight * component
+        else:
+            return FormSum(*args)
     elif isinstance(form, Adjoint):
         # Is `derivative(Adjoint(A), ...)` with A a 2-form even legal ?
         # -> If yes, what's the right thing to do here ?
