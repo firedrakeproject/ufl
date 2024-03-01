@@ -1,20 +1,11 @@
-#!/usr/bin/env py.test
-# -*- coding: utf-8 -*-
-
-"""
-Tests of the various ways Measure objects can be created and used.
-"""
-
-import pytest
-
-# This imports everything external code will see from ufl
-from ufl import *
-from ufl.algorithms import compute_form_data
-
-# all_cells = (interval, triangle, tetrahedron,
-#             quadrilateral, hexahedron)
+"""Tests of the various ways Measure objects can be created and used."""
 
 from mockobjects import MockMesh, MockMeshFunction
+
+from ufl import Cell, Coefficient, FunctionSpace, Measure, Mesh, as_ufl, dC, dI, dO, triangle
+from ufl.finiteelement import FiniteElement
+from ufl.pullback import identity_pullback
+from ufl.sobolevspace import H1
 
 
 def test_construct_forms_from_default_measures():
@@ -64,12 +55,12 @@ def test_construct_forms_from_default_measures():
     assert dS_v.integral_type() == "interior_facet_vert"
 
     # Check that defaults are set properly
-    assert dx.ufl_domain() == None
+    assert dx.ufl_domain() is None
     assert dx.metadata() == {}
 
     # Check that we can create a basic form with default measure
     one = as_ufl(1)
-    a = one * dx(Mesh(triangle))
+    one * dx(Mesh(FiniteElement("Lagrange", triangle, 1, (2, ), identity_pullback, H1)))
 
 
 def test_foo():
@@ -79,7 +70,8 @@ def test_foo():
     tdim = 2
     cell = Cell("triangle", gdim)
     mymesh = MockMesh(9)
-    mydomain = Mesh(cell, ufl_id=9, cargo=mymesh)
+    mydomain = Mesh(FiniteElement("Lagrange", cell, 1, (gdim, ), identity_pullback, H1),
+                    ufl_id=9, cargo=mymesh)
 
     assert cell.topological_dimension() == tdim
     assert cell.geometric_dimension() == gdim
@@ -91,7 +83,7 @@ def test_foo():
     assert mydomain.ufl_cargo() == mymesh
 
     # Define a coefficient for use in tests below
-    V = FunctionSpace(mydomain, FiniteElement("CG", cell, 1))
+    V = FunctionSpace(mydomain, FiniteElement("Lagrange", cell, 1, (), identity_pullback, H1))
     f = Coefficient(V)
 
     # Test definition of a custom measure with explicit parameters
@@ -146,8 +138,6 @@ def test_foo():
 
     assert dxm.ufl_domain() is None
     assert dxm.subdomain_id() == "everywhere"
-
-    dxi = dx(metadata={"quadrature_degree": 3})
 
     # Mock some dolfin data structures
     dx = Measure("dx")

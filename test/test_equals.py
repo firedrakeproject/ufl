@@ -1,28 +1,61 @@
-#!/usr/bin/env py.test
-# -*- coding: utf-8 -*-
+"""Test of expression comparison."""
 
-"""
-Test of expression comparison.
-"""
-
-import pytest
-
-# This imports everything external code will see from ufl
-from ufl import *
+from ufl import Coefficient, Cofunction, FunctionSpace, Mesh, triangle
+from ufl.finiteelement import FiniteElement
+from ufl.pullback import identity_pullback
+from ufl.sobolevspace import H1
 
 
 def test_comparison_of_coefficients():
-    V = FiniteElement("CG", triangle, 1)
-    U = FiniteElement("CG", triangle, 2)
-    Ub = FiniteElement("CG", triangle, 2)
-    v1 = Coefficient(V, count=1)
-    v1b = Coefficient(V, count=1)
-    v2 = Coefficient(V, count=2)
-    u1 = Coefficient(U, count=1)
-    u2 = Coefficient(U, count=2)
-    u2b = Coefficient(Ub, count=2)
+    V = FiniteElement("Lagrange", triangle, 1, (), identity_pullback, H1)
+    U = FiniteElement("Lagrange", triangle, 2, (), identity_pullback, H1)
+    Ub = FiniteElement("Lagrange", triangle, 2, (), identity_pullback, H1)
 
-    # Itentical objects
+    domain = Mesh(FiniteElement("Lagrange", triangle, 1, (2, ), identity_pullback, H1))
+    v_space = FunctionSpace(domain, V)
+    u_space = FunctionSpace(domain, U)
+    ub_space = FunctionSpace(domain, Ub)
+
+    v1 = Coefficient(v_space, count=1)
+    v1b = Coefficient(v_space, count=1)
+    v2 = Coefficient(v_space, count=2)
+    u1 = Coefficient(u_space, count=1)
+    u2 = Coefficient(u_space, count=2)
+    u2b = Coefficient(ub_space, count=2)
+
+    # Identical objects
+    assert v1 == v1
+    assert u2 == u2
+
+    # Equal but distinct objects
+    assert v1 == v1b
+    assert u2 == u2b
+
+    # Different objects
+    assert not v1 == v2
+    assert not u1 == u2
+    assert not v1 == u1
+    assert not v2 == u2
+
+
+def test_comparison_of_cofunctions():
+    V = FiniteElement("Lagrange", triangle, 1, (), identity_pullback, H1)
+    U = FiniteElement("Lagrange", triangle, 2, (), identity_pullback, H1)
+    Ub = FiniteElement("Lagrange", triangle, 2, (), identity_pullback, H1)
+
+    domain = Mesh(FiniteElement("Lagrange", triangle, 1, (2, ), identity_pullback, H1))
+    v_space = FunctionSpace(domain, V)
+    u_space = FunctionSpace(domain, U)
+    ub_space = FunctionSpace(domain, Ub)
+
+    v1 = Cofunction(v_space.dual(), count=1)
+    v1b = Cofunction(v_space.dual(), count=1)
+    v2 = Cofunction(v_space.dual(), count=2)
+    u1 = Cofunction(u_space.dual(), count=1)
+    u2 = Cofunction(u_space.dual(), count=2)
+    u2b = Cofunction(ub_space.dual(), count=2)
+
+    # Identical objects
     assert v1 == v1
     assert u2 == u2
 
@@ -38,9 +71,11 @@ def test_comparison_of_coefficients():
 
 
 def test_comparison_of_products():
-    V = FiniteElement("CG", triangle, 1)
-    v = Coefficient(V)
-    u = Coefficient(V)
+    V = FiniteElement("Lagrange", triangle, 1, (), identity_pullback, H1)
+    domain = Mesh(FiniteElement("Lagrange", triangle, 1, (2, ), identity_pullback, H1))
+    v_space = FunctionSpace(domain, V)
+    v = Coefficient(v_space)
+    u = Coefficient(v_space)
     a = (v * 2) * u
     b = (2 * v) * u
     c = 2 * (v * u)
@@ -50,9 +85,11 @@ def test_comparison_of_products():
 
 
 def test_comparison_of_sums():
-    V = FiniteElement("CG", triangle, 1)
-    v = Coefficient(V)
-    u = Coefficient(V)
+    V = FiniteElement("Lagrange", triangle, 1, (), identity_pullback, H1)
+    domain = Mesh(FiniteElement("Lagrange", triangle, 1, (2, ), identity_pullback, H1))
+    v_space = FunctionSpace(domain, V)
+    v = Coefficient(v_space)
+    u = Coefficient(v_space)
     a = (v + 2) + u
     b = (2 + v) + u
     c = 2 + (v + u)
@@ -62,10 +99,12 @@ def test_comparison_of_sums():
 
 
 def test_comparison_of_deeply_nested_expression():
-    V = FiniteElement("CG", triangle, 1)
-    v = Coefficient(V, count=1)
-    u = Coefficient(V, count=1)
-    w = Coefficient(V, count=2)
+    V = FiniteElement("Lagrange", triangle, 1, (), identity_pullback, H1)
+    domain = Mesh(FiniteElement("Lagrange", triangle, 1, (2, ), identity_pullback, H1))
+    v_space = FunctionSpace(domain, V)
+    v = Coefficient(v_space, count=1)
+    u = Coefficient(v_space, count=1)
+    w = Coefficient(v_space, count=2)
 
     def build_expr(a):
         for i in range(100):

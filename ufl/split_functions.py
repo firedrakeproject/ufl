@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-"Algorithm for splitting a Coefficient or Argument into subfunctions."
-
+"""Algorithm for splitting a Coefficient or Argument into subfunctions."""
 # Copyright (C) 2008-2016 Martin Sandve Alnæs
 #
 # This file is part of UFL (https://www.fenicsproject.org)
@@ -9,19 +7,19 @@
 #
 # Modified by Anders Logg, 2008
 
-from ufl.log import error
-from ufl.utils.sequences import product
-from ufl.finiteelement import TensorElement
-from ufl.tensors import as_vector, as_matrix, ListTensor
 from ufl.indexed import Indexed
 from ufl.permutation import compute_indices
+from ufl.tensors import ListTensor, as_matrix, as_vector
 from ufl.utils.indexflattening import flatten_multiindex, shape_to_strides
+from ufl.utils.sequences import product
 
 
 def split(v):
-    """UFL operator: If v is a Coefficient or Argument in a mixed space, returns
-    a tuple with the function components corresponding to the subelements."""
+    """Split a coefficient or argument.
 
+    If v is a Coefficient or Argument in a mixed space, returns
+    a tuple with the function components corresponding to the subelements.
+    """
     # Default range is all of v
     begin = 0
     end = None
@@ -45,25 +43,21 @@ def split(v):
                 begin = int(begin)
                 end = int(end) + 1
             else:
-                error("Don't know how to split %s." % (v,))
+                raise ValueError(f"Don't know how to split {v}.")
         else:
-            error("Don't know how to split %s." % (v,))
+            raise ValueError(f"Don't know how to split {v}.")
 
     # Special case: simple element, just return function in a tuple
     element = v.ufl_element()
-    if element.num_sub_elements() == 0:
+    if element.num_sub_elements == 0:
         assert end is None
         return (v,)
 
-    if isinstance(element, TensorElement):
-        if element.symmetry():
-            error("Split not implemented for symmetric tensor elements.")
-
     if len(v.ufl_shape) != 1:
-        error("Don't know how to split tensor valued mixed functions without flattened index space.")
+        raise ValueError("Don't know how to split tensor valued mixed functions without flattened index space.")
 
     # Compute value size and set default range end
-    value_size = product(element.value_shape())
+    value_size = element.value_size
     if end is None:
         end = value_size
     else:
@@ -71,19 +65,22 @@ def split(v):
         # corresponding to beginning of range
         j = begin
         while True:
-            sub_i, j = element.extract_subelement_component(j)
-            element = element.sub_elements()[sub_i]
+            for e in element.sub_elements:
+                if j < e.value_size:
+                    element = e
+                    break
+                j -= e.value_size
             # Then break when we find the subelement that covers the whole range
-            if product(element.value_shape()) == (end - begin):
+            if element.value_size == (end - begin):
                 break
 
     # Build expressions representing the subfunction of v for each subelement
     offset = begin
     sub_functions = []
-    for i, e in enumerate(element.sub_elements()):
+    for i, e in enumerate(element.sub_elements):
         # Get shape, size, indices, and v components
         # corresponding to subelement value
-        shape = e.value_shape()
+        shape = e.value_shape
         strides = shape_to_strides(shape)
         rank = len(shape)
         sub_size = product(shape)
@@ -100,12 +97,13 @@ def split(v):
             subv = as_matrix([components[i * shape[1]: (i + 1) * shape[1]]
                               for i in range(shape[0])])
         else:
-            error("Don't know how to split functions with sub functions of rank %d." % rank)
+            raise ValueError(f"Don't know how to split functions with sub functions of rank {rank}.")
 
         offset += sub_size
         sub_functions.append(subv)
 
     if end != offset:
-        error("Function splitting failed to extract components for whole intended range. Something is wrong.")
+        raise ValueError(
+            "Function splitting failed to extract components for whole intended range. Something is wrong.")
 
     return tuple(sub_functions)

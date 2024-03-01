@@ -1,15 +1,15 @@
-#!/usr/bin/env py.test
-# -*- coding: utf-8 -*-
-
 __authors__ = "Martin Sandve Alnæs"
 __date__ = "2009-02-17 -- 2014-10-14"
 
 import pytest
-import math
 
-from ufl import *
-from ufl.constantvalue import as_ufl
+from ufl import (Coefficient, FunctionSpace, Mesh, SpatialCoordinate, as_vector, atan, cos, diff, exp, indices, ln, sin,
+                 tan, triangle, variable)
 from ufl.algorithms import expand_derivatives
+from ufl.constantvalue import as_ufl
+from ufl.finiteelement import FiniteElement
+from ufl.pullback import identity_pullback
+from ufl.sobolevspace import H1
 
 
 def get_variables():
@@ -173,16 +173,17 @@ def testIndexSum(v):
 
 
 def testCoefficient():
-    coord_elem = VectorElement("P", triangle, 1, dim=3)
+    coord_elem = FiniteElement("Lagrange", triangle, 1, (3, ), identity_pullback, H1)
     mesh = Mesh(coord_elem)
-    V = FunctionSpace(mesh, FiniteElement("P", triangle, 1))
+    V = FunctionSpace(mesh, FiniteElement("Lagrange", triangle, 1, (), identity_pullback, H1))
     v = Coefficient(V)
     assert round(expand_derivatives(diff(v, v))-1.0, 7) == 0
 
 
 def testDiffX():
     cell = triangle
-    x = SpatialCoordinate(cell)
+    domain = Mesh(FiniteElement("Lagrange", cell, 1, (2, ), identity_pullback, H1))
+    x = SpatialCoordinate(domain)
     f = x[0] ** 2 * x[1] ** 2
     i, = indices(1)
     df1 = diff(f, x)

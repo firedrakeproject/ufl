@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-"Utility objects for pretty syntax in user code."
-
+"""Utility objects for pretty syntax in user code."""
 # Copyright (C) 2008-2016 Martin Sandve Alnæs
 #
 # This file is part of UFL (https://www.fenicsproject.org)
@@ -10,10 +8,9 @@
 # Modified by Anders Logg, 2008
 # Modified by Kristian Oelgaard, 2009
 
-from ufl.core.multiindex import indices
 from ufl.cell import Cell
-from ufl.measure import Measure
-from ufl.measure import integral_type_to_measure_name
+from ufl.core.multiindex import indices
+from ufl.measure import Measure, integral_type_to_measure_name
 
 # Default indices
 i, j, k, l = indices(4)  # noqa: E741
@@ -37,6 +34,8 @@ prism = Cell("prism", 3)
 pyramid = Cell("pyramid", 3)
 quadrilateral = Cell("quadrilateral", 2)
 hexahedron = Cell("hexahedron", 3)
+tesseract = Cell("tesseract", 4)
+pentatope = Cell("pentatope", 4)
 
 # Facet is just a dummy declaration for RestrictedElement
 facet = "facet"
