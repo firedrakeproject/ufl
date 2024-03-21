@@ -705,7 +705,8 @@ class FormSum(BaseForm):
                  "ufl_operands",
                  "_domains",
                  "_domain_numbering",
-                 "_hash")
+                 "_hash",
+                 "_ufl_is_terminal_")
     _ufl_required_methods_ = ('_analyze_form_arguments')
 
     def __new__(cls, *args, **kwargs):
@@ -748,6 +749,7 @@ class FormSum(BaseForm):
         self._components = full_components
         self._sum_variational_components()
         self.ufl_operands = self._components
+        self._ufl_is_terminal_ = None
 
     def components(self):
         """Get components."""
