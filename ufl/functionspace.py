@@ -9,7 +9,7 @@
 # Modified by Massimiliano Leoni, 2016
 # Modified by Cecile Daversin-Catty, 2018
 
-from ufl.core.ufl_type import attach_operators_from_hash_data
+from ufl.core.ufl_type import UFLObject
 from ufl.domain import join_domains
 from ufl.duals import is_dual, is_primal
 
@@ -29,20 +29,18 @@ class AbstractFunctionSpace(object):
     def ufl_sub_spaces(self):
         """Return ufl sub spaces."""
         raise NotImplementedError(
-            "Missing implementation of IFunctionSpace.ufl_sub_spaces in %s."
-            % self.__class__.__name__
+            f"Missing implementation of ufl_sub_spaces in {self.__class__.__name__}."
         )
 
 
-@attach_operators_from_hash_data
-class BaseFunctionSpace(AbstractFunctionSpace):
+class BaseFunctionSpace(AbstractFunctionSpace, UFLObject):
     """Base function space."""
 
-    def __init__(self, domain, element):
+    def __init__(self, domain, element, label=""):
         """Initialise."""
         if domain is None:
             # DOLFIN hack
-            # TODO: Is anything expected from element.cell() in this case?
+            # TODO: Is anything expected from element.cell in this case?
             pass
         else:
             try:
@@ -50,12 +48,16 @@ class BaseFunctionSpace(AbstractFunctionSpace):
             except AttributeError:
                 raise ValueError("Expected non-abstract domain for initalization of function space.")
             else:
-                if element.cell() != domain_cell:
+                if element.cell != domain_cell:
                     raise ValueError("Non-matching cell of finite element and domain.")
-
         AbstractFunctionSpace.__init__(self)
+        self._label = label
         self._ufl_domain = domain
         self._ufl_element = element
+
+    def label(self):
+        """Return label of boundary domains to differentiate restricted and unrestricted."""
+        return self._label
 
     def ufl_sub_spaces(self):
         """Return ufl sub spaces."""
@@ -90,7 +92,7 @@ class BaseFunctionSpace(AbstractFunctionSpace):
             edata = None
         else:
             edata = element._ufl_hash_data_()
-        return (name, ddata, edata)
+        return (name, ddata, edata, self.label())
 
     def _ufl_signature_data_(self, renumbering, name=None):
         """UFL signature data."""
@@ -105,17 +107,14 @@ class BaseFunctionSpace(AbstractFunctionSpace):
             edata = None
         else:
             edata = element._ufl_signature_data_()
-        return (name, ddata, edata)
+        return (name, ddata, edata, self.label())
 
     def __repr__(self):
         """Representation."""
-        r = "BaseFunctionSpace(%s, %s)" % (repr(self._ufl_domain),
-                                           repr(self._ufl_element))
-        return r
+        return f"BaseFunctionSpace({self._ufl_domain!r}, {self._ufl_element!r})"
 
 
-@attach_operators_from_hash_data
-class FunctionSpace(BaseFunctionSpace):
+class FunctionSpace(BaseFunctionSpace, UFLObject):
     """Representation of a Function space."""
 
     _primal = True
@@ -123,7 +122,7 @@ class FunctionSpace(BaseFunctionSpace):
 
     def dual(self):
         """Get the dual of the space."""
-        return DualSpace(self._ufl_domain, self._ufl_element)
+        return DualSpace(self._ufl_domain, self._ufl_element, label=self.label())
 
     def _ufl_hash_data_(self):
         """UFL hash data."""
@@ -135,25 +134,26 @@ class FunctionSpace(BaseFunctionSpace):
 
     def __repr__(self):
         """Representation."""
-        r = "FunctionSpace(%s, %s)" % (repr(self._ufl_domain),
-                                       repr(self._ufl_element))
-        return r
+        return f"FunctionSpace({self._ufl_domain!r}, {self._ufl_element!r})"
+
+    def __str__(self):
+        """String."""
+        return f"FunctionSpace({self._ufl_domain}, {self._ufl_element})"
 
 
-@attach_operators_from_hash_data
-class DualSpace(BaseFunctionSpace):
+class DualSpace(BaseFunctionSpace, UFLObject):
     """Representation of a Dual space."""
 
     _primal = False
     _dual = True
 
-    def __init__(self, domain, element):
+    def __init__(self, domain, element, label=""):
         """Initialise."""
-        BaseFunctionSpace.__init__(self, domain, element)
+        BaseFunctionSpace.__init__(self, domain, element, label)
 
     def dual(self):
         """Get the dual of the space."""
-        return FunctionSpace(self._ufl_domain, self._ufl_element)
+        return FunctionSpace(self._ufl_domain, self._ufl_element, label=self.label())
 
     def _ufl_hash_data_(self):
         """UFL hash data."""
@@ -165,13 +165,14 @@ class DualSpace(BaseFunctionSpace):
 
     def __repr__(self):
         """Representation."""
-        r = "DualSpace(%s, %s)" % (repr(self._ufl_domain),
-                                   repr(self._ufl_element))
-        return r
+        return f"DualSpace({self._ufl_domain!r}, {self._ufl_element!r})"
+
+    def __str__(self):
+        """String."""
+        return f"DualSpace({self._ufl_domain}, {self._ufl_element})"
 
 
-@attach_operators_from_hash_data
-class TensorProductFunctionSpace(AbstractFunctionSpace):
+class TensorProductFunctionSpace(AbstractFunctionSpace, UFLObject):
     """Tensor product function space."""
 
     def __init__(self, *function_spaces):
@@ -196,12 +197,14 @@ class TensorProductFunctionSpace(AbstractFunctionSpace):
 
     def __repr__(self):
         """Representation."""
-        r = "TensorProductFunctionSpace(*%s)" % repr(self._ufl_function_spaces)
-        return r
+        return f"TensorProductFunctionSpace(*{self._ufl_function_spaces!r})"
+
+    def __str__(self):
+        """String."""
+        return self.__repr__()
 
 
-@attach_operators_from_hash_data
-class MixedFunctionSpace(AbstractFunctionSpace):
+class MixedFunctionSpace(AbstractFunctionSpace, UFLObject):
     """Mixed function space."""
 
     def __init__(self, *args):
@@ -297,4 +300,8 @@ class MixedFunctionSpace(AbstractFunctionSpace):
 
     def __repr__(self):
         """Representation."""
-        return f"MixedFunctionSpace(*{self._ufl_function_spaces})"
+        return f"MixedFunctionSpace(*{self._ufl_function_spaces!r})"
+
+    def __str__(self):
+        """String."""
+        return self.__repr__()
