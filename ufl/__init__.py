@@ -74,6 +74,7 @@ A very brief overview of the language contents follows:
     - HCurl
     - HEin
     - HDivDiv
+    - HCurlDiv
 
 
 * Pull backs::
@@ -279,7 +280,7 @@ from ufl.operators import (And, Dn, Dx, Not, Or, acos, asin, atan, atan2, avg, b
                            tanh, tr, transpose, variable)
 from ufl.pullback import (AbstractPullback, MixedPullback, SymmetricPullback, contravariant_piola, covariant_piola,
                           double_contravariant_piola, double_covariant_piola, identity_pullback, l2_piola)
-from ufl.sobolevspace import H1, H2, L2, HCurl, HDiv, HDivDiv, HEin, HInf
+from ufl.sobolevspace import H1, H2, L2, HCurl, HDiv, HDivDiv, HCurlDiv, HEin, HInf
 from ufl.split_functions import split
 from ufl.tensors import as_matrix, as_tensor, as_vector, unit_matrices, unit_matrix, unit_vector, unit_vectors
 from ufl.utils.sequences import product
@@ -288,7 +289,7 @@ __all__ = [
     'product',
     'as_cell', 'AbstractCell', 'Cell', 'TensorProductCell',
     'AbstractDomain', 'Mesh', 'MeshView',
-    'L2', 'H1', 'H2', 'HCurl', 'HDiv', 'HInf', 'HEin', 'HDivDiv',
+    'L2', 'H1', 'H2', 'HCurl', 'HDiv', 'HInf', 'HEin', 'HDivDiv', 'HCurlDiv',
     'identity_pullback', 'l2_piola', 'contravariant_piola', 'covariant_piola',
     'double_contravariant_piola', 'double_covariant_piola',
     'l2_piola', 'MixedPullback', 'SymmetricPullback', 'AbstractPullback',

@@ -52,6 +52,7 @@ class SobolevSpace(object):
             "HCurl": 0,
             "HEin": 0,
             "HDivDiv": 0,
+            "HCurlDiv": 0,
             "DirectionalH": 0
         }[self.name]
 
@@ -151,7 +152,7 @@ class DirectionalSobolevSpace(SobolevSpace):
 
         if other in [HDiv, HCurl]:
             return all(self._orders[i] >= 1 for i in self._spatial_indices)
-        elif other.name in ["HDivDiv", "HEin"]:
+        elif other.name in ["HDivDiv", "HCurlDiv", "HEin"]:
             # Don't know how these spaces compare
             return NotImplementedError(f"Don't know how to compare with {other.name}")
         else:
@@ -171,3 +172,4 @@ H2 = SobolevSpace("H2", [H1, HDiv, HCurl, L2])
 HInf = SobolevSpace("HInf", [H2, H1, HDiv, HCurl, L2])
 HEin = SobolevSpace("HEin", [L2])
 HDivDiv = SobolevSpace("HDivDiv", [L2])
+HCurlDiv = SobolevSpace("HCurlDiv", [L2])
