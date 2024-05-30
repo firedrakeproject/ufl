@@ -10,6 +10,7 @@
 # Modified by Massimiliano Leoni, 2016.
 
 from math import atan2
+import numbers
 
 import ufl
 # --- Helper functions imported here for compatibility---
@@ -489,12 +490,12 @@ def as_ufl(expression):
     """Converts expression to an Expr if possible."""
     if isinstance(expression, (Expr, ufl.BaseForm)):
         return expression
-    elif isinstance(expression, complex):
-        return ComplexValue(expression)
-    elif isinstance(expression, float):
-        return FloatValue(expression)
-    elif isinstance(expression, int):
+    elif isinstance(expression, numbers.Integral):
         return IntValue(expression)
+    elif isinstance(expression, numbers.Real):
+        return FloatValue(expression)
+    elif isinstance(expression, numbers.Complex):
+        return ComplexValue(expression)
     else:
         raise ValueError(
             f"Invalid type conversion: {expression} can not be converted to any UFL type.")
