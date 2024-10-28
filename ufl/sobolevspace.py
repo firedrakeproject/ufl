@@ -152,7 +152,7 @@ class DirectionalSobolevSpace(SobolevSpace):
 
         if other in [HDiv, HCurl]:
             return all(self._orders[i] >= 1 for i in self._spatial_indices)
-        elif other.name in ["HDivDiv", "HCurlDiv", "HEin"]:
+        elif other in [HEin, HCurlDiv, HDivDiv]:
             # Don't know how these spaces compare
             return NotImplementedError(f"Don't know how to compare with {other.name}")
         else:
