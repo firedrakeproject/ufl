@@ -22,6 +22,7 @@ from ufl.algorithms.transformer import Transformer
 from ufl.argument import Argument
 from ufl.coefficient import Coefficient
 from ufl.constantvalue import Zero
+from ufl.split_functions import split
 
 # All classes:
 from ufl.core.expr import ufl_err_str
@@ -397,18 +398,18 @@ def compute_form_action(form, coefficient):
     # Extract all arguments
     arguments = form.arguments()
 
-    parts = [arg.part() for arg in arguments]
-    if set(parts) - {None}:
-        raise ValueError("compute_form_action cannot handle parts.")
-
     # Pick last argument (will be replaced)
     u = arguments[-1]
 
     fs = u.ufl_function_space()
+    if u.part() is not None:
+        fs = fs[u.part()]
     if coefficient is None:
         coefficient = Coefficient(fs)
     elif coefficient.ufl_function_space() != fs:
         debug("Computing action of form on a coefficient in a different function space.")
+    if u.part() is not None:
+        coefficient = split(coefficient)[u.part()]
     return replace(form, {u: coefficient})
 
 
@@ -457,10 +458,6 @@ def compute_form_adjoint(form, reordered_arguments=None):
     """
     arguments = form.arguments()
 
-    parts = [arg.part() for arg in arguments]
-    if set(parts) - {None}:
-        raise ValueError("compute_form_adjoint cannot handle parts.")
-
     if len(arguments) != 2:
         raise ValueError("Expecting bilinear form.")
 
@@ -469,17 +466,17 @@ def compute_form_adjoint(form, reordered_arguments=None):
         raise ValueError("Mistaken assumption in code!")
 
     if reordered_arguments is None:
-        reordered_u = Argument(u.ufl_function_space(), number=v.number(), part=v.part())
-        reordered_v = Argument(v.ufl_function_space(), number=u.number(), part=u.part())
+        reordered_u = u.reconstruct(number=v.number())
+        reordered_v = v.reconstruct(number=u.number())
     else:
         reordered_u, reordered_v = reordered_arguments
 
     if reordered_u.number() >= reordered_v.number():
         raise ValueError("Ordering of new arguments is the same as the old arguments!")
 
-    if reordered_u.part() != v.part():
+    if reordered_v.part() != v.part():
         raise ValueError("Ordering of new arguments is the same as the old arguments!")
-    if reordered_v.part() != u.part():
+    if reordered_u.part() != u.part():
         raise ValueError("Ordering of new arguments is the same as the old arguments!")
 
     if reordered_u.ufl_function_space() != u.ufl_function_space():

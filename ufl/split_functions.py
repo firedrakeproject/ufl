@@ -22,6 +22,13 @@ def split(v):
     If v is a Coefficient or Argument in a mixed space, returns a tuple
     with the function components corresponding to the subelements.
     """
+    from ufl.argument import BaseArgument
+    if isinstance(v, BaseArgument) and v.part() is None:
+        element = v.ufl_element()
+        r = tuple(v.reconstruct(part=part) for part in range(element.num_sub_elements))
+        for a in r:
+            print(a.ufl_shape)
+        return r
     domain = extract_unique_domain(v)
 
     # Default range is all of v

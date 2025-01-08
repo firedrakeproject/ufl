@@ -45,12 +45,8 @@ class Indexed(Operator):
                 fi, fid = (), ()
             return Zero(shape=(), free_indices=fi, index_dimensions=fid)
 
-        try:
-            # Simplify indexed ListTensor
-            c = expression[multiindex]
-            return Indexed(*c.ufl_operands) if isinstance(c, Indexed) else c
-        except ValueError:
-            return Operator.__new__(cls)
+
+        return Operator.__new__(cls)
 
     def __init__(self, expression, multiindex):
         """Initialise."""
@@ -121,7 +117,7 @@ class Indexed(Operator):
             f"but object is already indexed: {ufl_err_str(self)}"
         )
 
-    def _ufl_expr_reconstruct_(self, expression, multiindex):
+    def __ufl_expr_reconstruct_(self, expression, multiindex):
         """Reconstruct."""
         try:
             # Simplify indexed ListTensor
