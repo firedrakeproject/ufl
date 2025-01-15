@@ -7,7 +7,7 @@
 #
 # Modified by Massimiliano Leoni, 2016
 
-from inspect import signature
+import inspect
 
 from ufl.core.expr import Expr
 from ufl.core.ufl_type import UFLType
@@ -15,7 +15,7 @@ from ufl.core.ufl_type import UFLType
 
 def get_num_args(function):
     """Return the number of arguments accepted by *function*."""
-    sig = signature(function)
+    sig = inspect.signature(function)
     return len(sig.parameters) + 1
 
 

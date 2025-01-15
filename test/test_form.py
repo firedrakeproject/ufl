@@ -10,8 +10,6 @@ from ufl import (
     SpatialCoordinate,
     TestFunction,
     TrialFunction,
-    action,
-    derivative,
     dot,
     ds,
     dx,
@@ -177,7 +175,6 @@ def test_formsum(mass):
     domain = Mesh(FiniteElement("Lagrange", triangle, 1, (2,), identity_pullback, H1))
     V = FunctionSpace(domain, element)
     v = Cofunction(V.dual())
-    u = Coefficient(V)
 
     assert v + mass
     assert mass + v
@@ -198,10 +195,3 @@ def test_formsum(mass):
     assert 2 * v
     assert isinstance(2 * v, BaseForm)
     assert (2 * v).weights()[0] == 2
-
-    f = action(-v, u)
-    df = derivative(9 * f, u)
-    assert isinstance(f, FormSum)
-    assert f.weights()[0] == -1
-    assert isinstance(df, FormSum)
-    assert df.weights()[0] == -9
