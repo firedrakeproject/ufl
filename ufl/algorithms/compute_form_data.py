@@ -13,6 +13,9 @@ from itertools import chain
 
 from ufl.algorithms.analysis import extract_coefficients, extract_sub_elements, unique_tuple
 from ufl.algorithms.apply_algebra_lowering import apply_algebra_lowering
+from ufl.algorithms.apply_coefficient_split import (
+    remove_component_and_list_tensors,
+)
 from ufl.algorithms.apply_derivatives import apply_coordinate_derivatives, apply_derivatives
 
 # These are the main symbolic processing steps:
@@ -34,6 +37,7 @@ from ufl.algorithms.formdata import FormData
 from ufl.algorithms.formtransformations import compute_form_arities
 from ufl.algorithms.remove_complex_nodes import remove_complex_nodes
 from ufl.classes import Coefficient, Form, FunctionSpace, GeometricFacetQuantity
+from ufl.constantvalue import Zero
 from ufl.corealg.traversal import traverse_unique_terminals
 from ufl.domain import extract_unique_domain
 from ufl.utils.sequences import max_degree
@@ -410,6 +414,14 @@ def compute_form_data(
     # TODO: Group this by domain first. For now keep a backwards
     # compatible data structure.
     self.max_subdomain_ids = _compute_max_subdomain_ids(self.integral_data)
+
+    for itg_data in self.integral_data:
+        new_integrals = []
+        for integral in itg_data.integrals:
+            integrand = remove_component_and_list_tensors(integral.integrand())
+            if not isinstance(integrand, Zero):
+                new_integrals.append(integral.reconstruct(integrand=integrand))
+        itg_data.integrals = new_integrals
 
     # --- Checks
     _check_elements(self)
