@@ -339,6 +339,11 @@ class Cell(AbstractCell):
             raise TypeError(f"reconstruct() got unexpected keyword argument '{key}'")
         return Cell(self._cellname)
 
+    @property
+    def cells(self):
+        """Return the component cells."""
+        return (self,)
+
 
 class TensorProductCell(AbstractCell):
     """Tensor product cell."""
@@ -440,6 +445,11 @@ class TensorProductCell(AbstractCell):
             raise TypeError(f"reconstruct() got unexpected keyword argument '{key}'")
         return TensorProductCell(*self._cells)
 
+    @property
+    def cells(self):
+        """Return the component cells."""
+        return (self,)
+
 
 def simplex(topological_dimension: int):
     """Return a simplex cell of the given dimension."""
@@ -484,3 +494,107 @@ def as_cell(cell: AbstractCell | str | tuple[AbstractCell, ...]) -> AbstractCell
         return TensorProductCell(*cell)
     else:
         raise ValueError(f"Invalid cell {cell}.")
+
+
+class CellSequence(AbstractCell):
+    """Representation of a named finite element cell with known structure."""
+
+    __slots__ = (
+        "_cells",
+        "_tdim",
+    )
+
+    def __init__(self, cells):
+        """Initialise.
+
+        Args:
+            cellname: Name of the cell
+        """
+        self._cells = cells
+        #self._tdim = len(self._sub_entity_celltypes) - 1
+
+    def topological_dimension(self) -> int:
+        """Return the dimension of the topology of this cell."""
+        #return self._tdim
+        raise RuntimeError(f"Should not call this method on {type(self)}")
+
+    def is_simplex(self) -> bool:
+        """Return True if this is a simplex cell."""
+        #return self._cellname in ["vertex", "interval", "triangle", "tetrahedron"]
+        raise RuntimeError(f"Should not call this method on {type(self)}")
+
+    def has_simplex_facets(self) -> bool:
+        """Return True if all the facets of this cell are simplex cells."""
+        #return self._cellname in ["interval", "triangle", "quadrilateral", "tetrahedron"]
+        raise RuntimeError(f"Should not call this method on {type(self)}")
+
+    def num_sub_entities(self, dim: int) -> int:
+        """Get the number of sub-entities of the given dimension."""
+        #if dim < 0:
+        #    return 0
+        #try:
+        #    return self._num_cell_entities[dim]
+        #except IndexError:
+        #    return 0
+        raise RuntimeError(f"Should not call this method on {type(self)}")
+
+    def sub_entities(self, dim: int) -> typing.Tuple[AbstractCell, ...]:
+        """Get the sub-entities of the given dimension."""
+        #if dim < 0:
+        #    return ()
+        #try:
+        #    return self._sub_entities[dim]
+        #except IndexError:
+        #    return ()
+        raise RuntimeError(f"Should not call this method on {type(self)}")
+
+    def sub_entity_types(self, dim: int) -> typing.Tuple[AbstractCell, ...]:
+        """Get the unique sub-entity types of the given dimension."""
+        #if dim < 0:
+        #    return ()
+        #try:
+        #    return self._sub_entity_types[dim]
+        #except IndexError:
+        #    return ()
+        raise RuntimeError(f"Should not call this method on {type(self)}")
+
+    def _lt(self, other) -> bool:
+        #return self._cellname < other._cellname
+        raise RuntimeError(f"Should not call this method on {type(self)}")
+
+    def cellname(self) -> str:
+        """Return the cellname of the cell."""
+        #return self._cellname
+        raise RuntimeError(f"Should not call this method on {type(self)}")
+
+    def reconstruct(self, **kwargs: typing.Any) -> CellSequence:
+        """Reconstruct this cell, overwriting properties by those in kwargs."""
+        #for key, value in kwargs.items():
+        #    raise TypeError(f"reconstruct() got unexpected keyword argument '{key}'")
+        #return Cell(self._cellname)
+        raise RuntimeError(f"Should not call this method on {type(self)}")
+
+    def __repr__(self):
+        """Representation."""
+        return "CellSequence(%s)" % (repr(self._cells),)
+
+    def __str__(self):
+        """Format as a string."""
+        return "<CellSequence #%s>" % (self._cells,)
+
+    def _ufl_hash_data_(self):
+        """UFL hash data."""
+        return ("CellSequence", tuple(c._ufl_hash_data_() for c in self._cells))
+
+    def _ufl_signature_data_(self, renumbering):
+        """UFL signature data."""
+        return ("CellSequence", tuple(c._ufl_signature_data_(renumbering) for c in self._cells))
+
+    def _ufl_sort_key_(self):
+        """UFL sort key."""
+        return ("CellSequence", tuple(c._ufl_sort_key_() for c in self._cells))
+
+    @property
+    def cells(self):
+        """Return the component cells."""
+        return self._cells
