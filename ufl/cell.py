@@ -339,6 +339,11 @@ class Cell(AbstractCell):
             raise TypeError(f"reconstruct() got unexpected keyword argument '{key}'")
         return Cell(self._cellname)
 
+    @property
+    def cells(self):
+        """Return the component cells."""
+        return (self,)
+
 
 class TensorProductCell(AbstractCell):
     """Tensor product cell."""
@@ -439,6 +444,11 @@ class TensorProductCell(AbstractCell):
         for key, value in kwargs.items():
             raise TypeError(f"reconstruct() got unexpected keyword argument '{key}'")
         return TensorProductCell(*self._cells)
+
+    @property
+    def cells(self):
+        """Return the component cells."""
+        return (self,)
 
 
 def simplex(topological_dimension: int):
