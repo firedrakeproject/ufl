@@ -479,8 +479,10 @@ def as_cell(cell: typing.Union[AbstractCell, str, typing.Tuple[AbstractCell, ...
     if isinstance(cell, AbstractCell):
         return cell
     elif isinstance(cell, str):
-        return Cell(cell)
+        from fuse import constructCellComplex
+        return constructCellComplex(cell)
+        # return Cell(cell)
     elif isinstance(cell, tuple):
-        return TensorProductCell(cell)
+        return TensorProductCell(*cell)
     else:
         raise ValueError(f"Invalid cell {cell}.")
