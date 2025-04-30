@@ -217,9 +217,13 @@ class MeshSequence(AbstractDomain, UFLObject):
         self._ufl_cell = CellSequence(tuple(m.ufl_cell() for m in meshes))
         (gdim,) = set(m.geometric_dimension() for m in meshes)
         # TODO: Need to change for more general mixed meshes.
-        (tdim,) = set(m.topological_dimension() for m in meshes)
+        tdim = max(m.topological_dimension() for m in meshes)#???
         AbstractDomain.__init__(self, tdim, gdim)
         self._meshes = tuple(meshes)
+
+    #def topological_dimension(self):
+    #    """Return the dimension of the topology of this domain."""
+    #    raise AssertionError
 
     def ufl_cell(self):
         """Get the cell."""
