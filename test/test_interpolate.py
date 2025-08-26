@@ -4,6 +4,7 @@ __authors__ = "Nacime Bouziani"
 __date__ = "2021-11-19"
 
 import pytest
+from utils import FiniteElement, LagrangeElement
 
 from ufl import (
     Action,
@@ -33,14 +34,13 @@ from ufl.algorithms.analysis import (
 )
 from ufl.algorithms.expand_indices import expand_indices
 from ufl.core.interpolate import Interpolate
-from ufl.finiteelement import FiniteElement
 from ufl.pullback import identity_pullback
 from ufl.sobolevspace import H1
 
 
 @pytest.fixture
 def domain_2d():
-    return Mesh(FiniteElement("Lagrange", triangle, 1, (2,), identity_pullback, H1))
+    return Mesh(LagrangeElement(triangle, 1, (2,)))
 
 
 @pytest.fixture
@@ -192,3 +192,19 @@ def test_extract_base_form_operators(V1, V2):
     v = TestFunction(V1)
     F = Action(v * v2 * dx, Iv)
     assert extract_arguments(F) == [v, uhat]
+
+
+def test_operator_derivative_reconstruction(V1, V2):
+    u = Coefficient(V1)
+
+    # Define Interpolate
+    Iu = Interpolate(u, V2)
+
+    # -- Differentiate: Interpolate(u, V2) -- #
+    uhat = TrialFunction(V1)
+    dIu = derivative(Iu, u, uhat)
+    # Check operator derivative can be reconstructed
+    dIu_r = dIu._ufl_expr_reconstruct_(*dIu.ufl_operands)
+    dIu = expand_derivatives(dIu_r)
+
+    assert dIu == Interpolate(uhat, V2)
