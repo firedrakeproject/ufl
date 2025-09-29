@@ -20,6 +20,7 @@ from ufl.checks import is_scalar_constant_expression
 from ufl.constant import Constant
 from ufl.constantvalue import Zero
 from ufl.core.expr import Expr, ufl_err_str
+from ufl.core.terminal import FormArgument
 from ufl.core.ufl_type import UFLType, ufl_type
 from ufl.domain import extract_unique_domain, sort_domains
 from ufl.equation import Equation
@@ -80,14 +81,20 @@ def _sorted_integrals(integrals):
 
 
 @ufl_type()
-class BaseForm(object, metaclass=UFLType):
+class BaseForm(metaclass=UFLType):
     """Description of an object containing arguments."""
+
+    ufl_operands: tuple[FormArgument, ...]
 
     # Slots is kept empty to enable multiple inheritance with other
     # classes
     __slots__ = ()
     _ufl_is_abstract_ = True
-    _ufl_required_methods_ = ("_analyze_form_arguments", "_analyze_domains", "ufl_domains")
+    _ufl_required_methods_: tuple[str, ...] = (
+        "_analyze_form_arguments",
+        "_analyze_domains",
+        "ufl_domains",
+    )
 
     def __init__(self):
         """Initialise."""
@@ -108,6 +115,12 @@ class BaseForm(object, metaclass=UFLType):
             self._analyze_form_arguments()
         return self._coefficients
 
+    def geometric_quantities(self):
+        """Return all ``GeometricQuantity`` objects found in form."""
+        if self._geometric_quantities is None:
+            self._analyze_form_arguments()
+        return self._geometric_quantities
+
     def ufl_domain(self):
         """Return the single geometric integration domain occuring in the base form.
 
@@ -116,7 +129,7 @@ class BaseForm(object, metaclass=UFLType):
         try:
             (domain,) = set(self.ufl_domains())
         except ValueError:
-            raise ValueError("%s must have exactly one domain." % type(self).__name__)
+            raise ValueError(f"{type(self).__name__} must have exactly one domain.")
         # Return the one and only domain
         return domain
 
@@ -242,6 +255,7 @@ class Form(BaseForm):
         "_constant_numbering",
         "_constants",
         "_domain_numbering",
+        "_geometric_quantities",
         "_hash",
         # --- List of Integral objects (a Form is a sum of these
         # Integrals, everything else is derived)
@@ -545,7 +559,7 @@ class Form(BaseForm):
                 if f in coeffs:
                     repdict[f] = coefficients[f]
                 else:
-                    warnings.warn("Coefficient %s is not in form." % ufl_err_str(f))
+                    warnings.warn(f"Coefficient {ufl_err_str(f)} is not in form.")
         if repdict:
             from ufl.formoperators import replace
 
@@ -582,15 +596,22 @@ class Form(BaseForm):
         """Analyze domains."""
         from ufl.domain import join_domains, sort_domains
 
-        # Collect unique integration domains
-        integration_domains = join_domains([itg.ufl_domain() for itg in self._integrals])
-
-        # Make canonically ordered list of the domains
-        self._integration_domains = sort_domains(integration_domains)
-
-        # TODO: Not including domains from coefficients and arguments
-        # here, may need that later
-        self._domain_numbering = {d: i for i, d in enumerate(self._integration_domains)}
+        # Collect integration domains.
+        self._integration_domains = sort_domains(
+            join_domains([itg.ufl_domain() for itg in self._integrals])
+        )
+        # Collect domains in integrands.
+        domains_in_integrands = set()
+        for o in chain(
+            self.arguments(), self.coefficients(), self.constants(), self.geometric_quantities()
+        ):
+            domain = extract_unique_domain(o, expand_mesh_sequence=False)
+            domains_in_integrands.update(domain.meshes)
+        domains_in_integrands -= set(self._integration_domains)
+        all_domains = self._integration_domains + sort_domains(join_domains(domains_in_integrands))
+        # Let problem solving environments access all domains via
+        # self._domain_numbering.keys() (wrapped in extract_domains()).
+        self._domain_numbering = {d: i for i, d in enumerate(all_domains)}
 
     def _analyze_subdomain_data(self):
         """Analyze subdomain data."""
@@ -617,13 +638,14 @@ class Form(BaseForm):
 
     def _analyze_form_arguments(self):
         """Analyze which Argument and Coefficient objects can be found in the form."""
-        from ufl.algorithms.analysis import extract_arguments_and_coefficients
+        from ufl.algorithms.analysis import extract_terminals_with_domain
 
-        arguments, coefficients = extract_arguments_and_coefficients(self)
+        arguments, coefficients, geometric_quantities = extract_terminals_with_domain(self)
 
         # Define canonical numbering of arguments and coefficients
         self._arguments = tuple(sorted(set(arguments), key=lambda x: x.number()))
         self._coefficients = tuple(sorted(set(coefficients), key=lambda x: x.count()))
+        self._geometric_quantities = geometric_quantities  # sorted by (type, domain)
 
     def _analyze_base_form_operators(self):
         """Analyze which BaseFormOperator objects can be found in the form."""
@@ -634,38 +656,11 @@ class Form(BaseForm):
 
     def _compute_renumbering(self):
         """Compute renumbering."""
-        # Include integration domains and coefficients in renumbering
         dn = self.domain_numbering()
         tn = self.terminal_numbering()
         renumbering = {}
         renumbering.update(dn)
         renumbering.update(tn)
-
-        # Add domains of coefficients, these may include domains not
-        # among integration domains
-        k = len(dn)
-        for c in self.coefficients():
-            d = extract_unique_domain(c)
-            if d is not None and d not in renumbering:
-                renumbering[d] = k
-                k += 1
-
-        # Add domains of arguments, these may include domains not
-        # among integration domains
-        for a in self._arguments:
-            d = a.ufl_function_space().ufl_domain()
-            if d is not None and d not in renumbering:
-                renumbering[d] = k
-                k += 1
-
-        # Add domains of constants, these may include domains not
-        # among integration domains
-        for c in self._constants:
-            d = extract_unique_domain(c)
-            if d is not None and d not in renumbering:
-                renumbering[d] = k
-                k += 1
-
         return renumbering
 
     def _compute_signature(self):
@@ -701,7 +696,7 @@ class FormSum(BaseForm):
         "_weights",
         "ufl_operands",
     )
-    _ufl_required_methods_ = "_analyze_form_arguments"
+    _ufl_required_methods_ = "_analyze_form_arguments"  # type: ignore
 
     def __new__(cls, *args, **kwargs):
         """Create a new FormSum."""
@@ -717,7 +712,7 @@ class FormSum(BaseForm):
             arguments = arg.arguments()
             return ZeroBaseForm(arguments)
 
-        return super(FormSum, cls).__new__(cls)
+        return super().__new__(cls)
 
     def __init__(self, *components):
         """Initialise."""
@@ -908,11 +903,11 @@ class ZeroBaseForm(BaseForm):
 
     def __str__(self):
         """Format as a string."""
-        return "ZeroBaseForm(%s)" % (", ".join(str(arg) for arg in self._arguments))
+        return "ZeroBaseForm({})".format(", ".join(str(arg) for arg in self._arguments))
 
     def __repr__(self):
         """Representation."""
-        return "ZeroBaseForm(%s)" % (", ".join(repr(arg) for arg in self._arguments))
+        return "ZeroBaseForm({})".format(", ".join(repr(arg) for arg in self._arguments))
 
     def __hash__(self):
         """Hash."""

@@ -1,32 +1,43 @@
 __authors__ = "Cecile Daversin Catty"
 __date__ = "2019-03-26 -- 2019-03-26"
 
+from utils import LagrangeElement
+
 from ufl import (
+    Coefficient,
+    Constant,
     FunctionSpace,
     Measure,
     Mesh,
     MixedFunctionSpace,
     TestFunctions,
     TrialFunctions,
+    action,
+    conj,
+    dx,
+    grad,
+    inner,
     interval,
+    lhs,
+    replace,
+    rhs,
     tetrahedron,
     triangle,
 )
+from ufl.algorithms import expand_derivatives, renumbering
 from ufl.algorithms.formsplitter import extract_blocks
-from ufl.finiteelement import FiniteElement
-from ufl.pullback import identity_pullback
-from ufl.sobolevspace import H1
+from ufl.algorithms.formtransformations import compute_form_adjoint
 
 
 def test_mixed_functionspace(self):
     # Domains
-    domain_3d = Mesh(FiniteElement("Lagrange", tetrahedron, 1, (3,), identity_pullback, H1))
-    domain_2d = Mesh(FiniteElement("Lagrange", triangle, 1, (2,), identity_pullback, H1))
-    domain_1d = Mesh(FiniteElement("Lagrange", interval, 1, (1,), identity_pullback, H1))
+    domain_3d = Mesh(LagrangeElement(tetrahedron, 1, (3,)))
+    domain_2d = Mesh(LagrangeElement(triangle, 1, (2,)))
+    domain_1d = Mesh(LagrangeElement(interval, 1, (1,)))
     # Finite elements
-    f_1d = FiniteElement("Lagrange", interval, 1, (), identity_pullback, H1)
-    f_2d = FiniteElement("Lagrange", triangle, 1, (), identity_pullback, H1)
-    f_3d = FiniteElement("Lagrange", tetrahedron, 1, (), identity_pullback, H1)
+    f_1d = LagrangeElement(interval, 1)
+    f_2d = LagrangeElement(triangle, 1)
+    f_3d = LagrangeElement(tetrahedron, 1)
     # Function spaces
     V_3d = FunctionSpace(domain_3d, f_3d)
     V_2d = FunctionSpace(domain_2d, f_2d)
@@ -95,3 +106,122 @@ def test_mixed_functionspace(self):
     assert V_dual.ufl_sub_space(0) == V_3d.dual()
     assert V_dual.ufl_sub_space(1) == V_2d
     assert V_dual.ufl_sub_space(2) == V_1d.dual()
+
+
+def test_lhs_rhs():
+    V = LagrangeElement(interval, 1)
+    domain = Mesh(LagrangeElement(interval, 1, (1,)))
+    space0 = FunctionSpace(domain, V)
+    space1 = FunctionSpace(domain, V)
+    mixed_space = MixedFunctionSpace(space0, space1)
+
+    def mass(u, v):
+        return inner(u, v) * dx
+
+    def mixed(u, v):
+        return inner(u.dx(0), v) * dx
+
+    def stiffness(u, v):
+        return inner(grad(u), grad(v)) * dx
+
+    def source1(f, v):
+        return f * v * dx
+
+    def source2(f, v):
+        return f * v.dx(0) * dx
+
+    u, p = TrialFunctions(mixed_space)
+    v, q = TestFunctions(mixed_space)
+    f = Constant(domain)
+    g = Constant(domain)
+    F = mass(u, v) + mixed(u, q) + stiffness(p, q) + source1(f, v) + source2(g, q)
+    a = lhs(F)
+    a_blocked = extract_blocks(a)
+    L = rhs(F)
+    L_blocked = extract_blocks(L)
+
+    assert a_blocked[0][0] == mass(u, v)
+    assert a_blocked[0][1] is None
+    assert a_blocked[1][0] == mixed(u, q)
+    assert renumbering.renumber_indices(a_blocked[1][1]) == renumbering.renumber_indices(
+        expand_derivatives(stiffness(p, q))
+    )
+
+    assert L_blocked[0] == -source1(f, v)
+    assert L_blocked[1] == -source2(g, q)
+
+
+def test_action():
+    V = LagrangeElement(interval, 1)
+    domain = Mesh(LagrangeElement(interval, 1, (1,)))
+    space0 = FunctionSpace(domain, V)
+    space1 = FunctionSpace(domain, V)
+    mixed_space = MixedFunctionSpace(space0, space1)
+
+    def mass(u, v):
+        return inner(u, v) * dx
+
+    def stiffness(u, v):
+        return inner(grad(u), grad(v)) * dx
+
+    def source1(f, v):
+        return inner(f, v) * dx
+
+    def source2(f, v):
+        return inner(f, v.dx(0)) * dx
+
+    u, _ = TrialFunctions(mixed_space)
+    v, q = TestFunctions(mixed_space)
+    f = Constant(domain)
+    g = Constant(domain)
+    F = mass(u, v) + stiffness(u, q) + source1(f, v) + source2(g, q)
+    assert len(F.coefficients()) == 0
+    F_reduced = action(F)
+    F_reduced_renumbered = renumbering.renumber_indices(expand_derivatives(F_reduced))
+    assert len(F_reduced_renumbered.coefficients()) == 1
+    inserted_coeff = F_reduced_renumbered.coefficients()[0]
+    # Create reference solution
+    Fh = mass(inserted_coeff, v) + stiffness(inserted_coeff, q) + source1(f, v) + source2(g, q)
+
+    Fr1 = renumbering.renumber_indices(expand_derivatives(Fh))
+    assert Fr1 == F_reduced_renumbered
+
+    # Repeat action, reduce to scalar
+    coefficients = [Coefficient(space0), Coefficient(space1)]
+    J = action(F_reduced, coefficients)
+    J_renumbered = renumbering.renumber_indices(expand_derivatives(J))
+
+    # Reference J
+    J_exp = renumbering.renumber_indices(expand_derivatives(F))
+    J_ref = replace(J_exp, {u: inserted_coeff, v: coefficients[0], q: coefficients[1]})
+    # Verify
+    assert J_renumbered == J_ref
+
+
+def test_adjoint():
+    V = LagrangeElement(triangle, 1)
+    domain = Mesh(LagrangeElement(triangle, 1, (2,)))
+    space0 = FunctionSpace(domain, V)
+    space1 = FunctionSpace(domain, V)
+    mixed_space = MixedFunctionSpace(space0, space1)
+
+    u, p = TrialFunctions(mixed_space)
+    du, dp = TestFunctions(mixed_space)
+    c = Coefficient(space0)
+    Jh = (
+        inner(grad(u), grad(du)) * dx
+        + inner(c * dp.dx(0), u) * dx
+        - inner(du.dx(0), p.dx(1)) * dx
+        + inner(p, dp) * dx
+    )
+    Jh_adj = compute_form_adjoint(Jh)
+    blocked_adj = extract_blocks(Jh_adj)
+
+    ref_adj = [
+        [conj(inner(grad(du), grad(u))) * dx, conj(-inner(p.dx(0), du.dx(1))) * dx],
+        [conj(inner(c * u.dx(0), dp)) * dx, conj(inner(dp, p)) * dx],
+    ]
+
+    for i in range(2):
+        for j in range(2):
+            assert ref_adj[i][j] == blocked_adj[i][j]

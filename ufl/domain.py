@@ -6,8 +6,16 @@
 #
 # SPDX-License-Identifier:    LGPL-3.0-or-later
 
-import numbers
+from __future__ import annotations  # To avoid cyclic import when type-hinting.
 
+import numbers
+from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ufl.core.expr import Expr
+    from ufl.finiteelement import AbstractFiniteElement  # To avoid cyclic import when type-hinting.
+    from ufl.form import Form
 from ufl.cell import AbstractCell
 from ufl.core.ufl_id import attach_ufl_id
 from ufl.core.ufl_type import UFLObject
@@ -18,7 +26,7 @@ from ufl.sobolevspace import H1
 __all_classes__ = ["AbstractDomain", "Mesh", "MeshView"]
 
 
-class AbstractDomain(object):
+class AbstractDomain:
     """Symbolic representation of a geometric domain.
 
     Domain has only a geometric and a topological dimension.
@@ -49,6 +57,33 @@ class AbstractDomain(object):
     def topological_dimension(self):
         """Return the dimension of the topology of this domain."""
         return self._topological_dimension
+
+    @property
+    def meshes(self):
+        """Return the component meshes."""
+        raise NotImplementedError("meshes() method not implemented")
+
+    def __len__(self):
+        """Return number of component meshes."""
+        return len(self.meshes)
+
+    def __getitem__(self, i):
+        """Return i-th component mesh."""
+        if i >= len(self):
+            raise ValueError(f"index ({i}) >= num. component meshes ({len(self)})")
+        return self.meshes[i]
+
+    def __iter__(self):
+        """Return iterable component meshes."""
+        return iter(self.meshes)
+
+    def iterable_like(self, element: AbstractFiniteElement) -> Iterable[Mesh] | MeshSequence:
+        """Return iterable object that is iterable like ``element``."""
+        raise NotImplementedError("iterable_like() method not implemented")
+
+    def can_make_function_space(self, element: AbstractFiniteElement) -> bool:
+        """Check whether this mesh can make a function space with ``element``."""
+        raise NotImplementedError("can_make_function_space() method not implemented")
 
 
 # TODO: Would it be useful to have a domain representing R^d? E.g. for
@@ -104,12 +139,12 @@ class Mesh(AbstractDomain, UFLObject):
 
     def __repr__(self):
         """Representation."""
-        r = "Mesh(%s, %s)" % (repr(self._ufl_coordinate_element), repr(self._ufl_id))
+        r = f"Mesh({self._ufl_coordinate_element!r}, {self._ufl_id!r})"
         return r
 
     def __str__(self):
         """Format as a string."""
-        return "<Mesh #%s>" % (self._ufl_id,)
+        return f"<Mesh #{self._ufl_id}>"
 
     def _ufl_hash_data_(self):
         """UFL hash data."""
@@ -125,6 +160,108 @@ class Mesh(AbstractDomain, UFLObject):
         """UFL sort key."""
         typespecific = (self._ufl_id, self._ufl_coordinate_element)
         return (self.geometric_dimension(), self.topological_dimension(), "Mesh", typespecific)
+
+    @property
+    def meshes(self):
+        """Return the component meshes."""
+        return (self,)
+
+    def iterable_like(self, element: AbstractFiniteElement) -> Iterable[Mesh]:
+        """Return iterable object that is iterable like ``element``."""
+        return iter(self for _ in range(element.num_sub_elements))
+
+    def can_make_function_space(self, element: AbstractFiniteElement) -> bool:
+        """Check whether this mesh can make a function space with ``element``."""
+        # Can use with any element.
+        return True
+
+
+class MeshSequence(AbstractDomain, UFLObject):
+    """Symbolic representation of a mixed mesh.
+
+    This class represents a collection of meshes that, along with
+    a :class:`MixedElement`, represent a mixed function space defined on
+    multiple domains. This abstraction allows for defining the
+    mixed function space with the conventional :class:`FunctionSpace`
+    class and integrating multi-domain problems seamlessly.
+
+    Currently, all component meshes must have the same cell type (and
+    thus the same topological dimension).
+
+    Currently, one can only perform cell integrations when
+    :class:`MeshSequence`es are used.
+
+    .. code-block:: python3
+
+        cell = triangle
+        mesh0 = Mesh(FiniteElement("Lagrange", cell, 1, (2,), identity_pullback, H1))
+        mesh1 = Mesh(FiniteElement("Lagrange", cell, 1, (2,), identity_pullback, H1))
+        domain = MeshSequence([mesh0, mesh1])
+        elem0 = FiniteElement("Lagrange", cell, 1, (), identity_pullback, H1)
+        elem1 = FiniteElement("Lagrange", cell, 2, (), identity_pullback, H1)
+        elem = MixedElement([elem0, elem1])
+        V = FunctionSpace(domain, elem)
+        v = TestFunction(V)
+        v0, v1 = split(v)
+
+    """
+
+    def __init__(self, meshes: Sequence[Mesh]):
+        """Initialise."""
+        if any(isinstance(m, MeshSequence) for m in meshes):
+            raise NotImplementedError("""
+                Currently component meshes can not include MeshSequence instances""")
+        # currently only support single cell type.
+        (self._ufl_cell,) = set(m.ufl_cell() for m in meshes)
+        (gdim,) = set(m.geometric_dimension() for m in meshes)
+        # TODO: Need to change for more general mixed meshes.
+        (tdim,) = set(m.topological_dimension() for m in meshes)
+        AbstractDomain.__init__(self, tdim, gdim)
+        self._meshes = tuple(meshes)
+
+    def ufl_cell(self):
+        """Get the cell."""
+        # TODO: Might need MixedCell class for more general mixed meshes.
+        return self._ufl_cell
+
+    def __repr__(self):
+        """Representation."""
+        return f"MeshSequence({self._meshes!r})"
+
+    def __str__(self):
+        """Format as a string."""
+        return f"<MeshSequence #{self._meshes}>"
+
+    def _ufl_hash_data_(self):
+        """UFL hash data."""
+        return ("MeshSequence", tuple(m._ufl_hash_data_() for m in self._meshes))
+
+    def _ufl_signature_data_(self, renumbering):
+        """UFL signature data."""
+        return ("MeshSequence", tuple(m._ufl_signature_data_(renumbering) for m in self._meshes))
+
+    def _ufl_sort_key_(self):
+        """UFL sort key."""
+        return ("MeshSequence", tuple(m._ufl_sort_key_() for m in self._meshes))
+
+    @property
+    def meshes(self):
+        """Return the component meshes."""
+        return self._meshes
+
+    def iterable_like(self, element: AbstractFiniteElement) -> MeshSequence:
+        """Return iterable object that is iterable like ``element``."""
+        if len(self) != element.num_sub_elements:
+            raise RuntimeError(f"""len(self) ({len(self)}) !=
+                element.num_sub_elements ({element.num_sub_elements})""")
+        return self
+
+    def can_make_function_space(self, element: AbstractFiniteElement) -> bool:
+        """Check whether this mesh can make a function space with ``element``."""
+        if len(self) != element.num_sub_elements:
+            return False
+        else:
+            return all(d.can_make_function_space(e) for d, e in zip(self, element.sub_elements))
 
 
 @attach_ufl_id
@@ -159,15 +296,14 @@ class MeshView(AbstractDomain, UFLObject):
     def __repr__(self):
         """Representation."""
         tdim = self.topological_dimension()
-        r = "MeshView(%s, %s, %s)" % (repr(self._ufl_mesh), repr(tdim), repr(self._ufl_id))
+        r = f"MeshView({self._ufl_mesh!r}, {tdim!r}, {self._ufl_id!r})"
         return r
 
     def __str__(self):
         """Format as a string."""
-        return "<MeshView #%s of dimension %d over mesh %s>" % (
-            self._ufl_id,
-            self.topological_dimension(),
-            self._ufl_mesh,
+        return (
+            f"<MeshView #{self._ufl_id} of dimension {self.topological_dimension()} over"
+            f" mesh {self._ufl_mesh}>"
         )
 
     def _ufl_hash_data_(self):
@@ -190,56 +326,102 @@ def as_domain(domain):
     """Convert any valid object to an AbstractDomain type."""
     if isinstance(domain, AbstractDomain):
         # Modern UFL files and dolfin behaviour
+        (domain,) = set(domain.meshes)
         return domain
-
     try:
         return extract_unique_domain(domain)
     except AttributeError:
-        return domain.ufl_domain()
+        domain = domain.ufl_domain()
+        (domain,) = set(domain.meshes)
+        return domain
 
 
-def sort_domains(domains):
-    """Sort domains in a canonical ordering."""
+def sort_domains(domains: Sequence[AbstractDomain]):
+    """Sort domains in a canonical ordering.
+
+    Args:
+        domains: Sequence of domains.
+
+    Returns:
+        `tuple` of sorted domains.
+
+    """
     return tuple(sorted(domains, key=lambda domain: domain._ufl_sort_key_()))
 
 
-def join_domains(domains):
-    """Take a list of domains and return a tuple with only unique domain objects.
+def join_domains(domains: Sequence[AbstractDomain], expand_mesh_sequence: bool = True):
+    """Take a list of domains and return a set with only unique domain objects.
 
-    Checks that domains with the same id are compatible.
+    Args:
+        domains: Sequence of domains.
+        expand_mesh_sequence: If True, MeshSequence components are expanded.
+
+    Returns:
+        `set` of domains.
+
     """
     # Use hashing to join domains, ignore None
-    domains = set(domains) - set((None,))
-    if not domains:
+    joined_domains = set(domains) - set((None,))
+    if expand_mesh_sequence:
+        unrolled_joined_domains = set()
+        for domain in joined_domains:
+            unrolled_joined_domains.update(domain.meshes)
+        joined_domains = unrolled_joined_domains
+
+    if not joined_domains:
         return ()
 
     # Check geometric dimension compatibility
     gdims = set()
-    for domain in domains:
+    for domain in joined_domains:
         gdims.add(domain.geometric_dimension())
     if len(gdims) != 1:
         raise ValueError("Found domains with different geometric dimensions.")
 
-    return domains
+    return joined_domains
 
 
 # TODO: Move these to an analysis module?
 
 
-def extract_domains(expr):
-    """Return all domains expression is defined on."""
-    domainlist = []
-    for t in traverse_unique_terminals(expr):
-        domainlist.extend(t.ufl_domains())
-    return sorted(
-        join_domains(domainlist),
-        key=lambda D: (D.topological_dimension(), D.ufl_cell(), D.ufl_id()),
-    )
+def extract_domains(expr: Expr | Form, expand_mesh_sequence: bool = True):
+    """Return all domains expression is defined on.
+
+    Args:
+        expr: Expr or Form.
+        expand_mesh_sequence: If True, MeshSequence components are expanded.
+
+    Returns:
+        `tuple` of domains.
+
+    """
+    from ufl.form import Form
+
+    if isinstance(expr, Form):
+        if not expand_mesh_sequence:
+            raise NotImplementedError("""
+                Currently, can only extract domains from a Form with expand_mesh_sequence=True""")
+        # Be consistent with the numbering used in signature.
+        return tuple(expr.domain_numbering().keys())
+    else:
+        domainlist = []
+        for t in traverse_unique_terminals(expr):
+            domainlist.extend(t.ufl_domains())
+        return sort_domains(join_domains(domainlist, expand_mesh_sequence=expand_mesh_sequence))
 
 
-def extract_unique_domain(expr):
-    """Return the single unique domain expression is defined on or throw an error."""
-    domains = extract_domains(expr)
+def extract_unique_domain(expr, expand_mesh_sequence: bool = True):
+    """Return the single unique domain expression is defined on or throw an error.
+
+    Args:
+        expr: Expr or Form.
+        expand_mesh_sequence: If True, MeshSequence components are expanded.
+
+    Returns:
+        domain.
+
+    """
+    domains = extract_domains(expr, expand_mesh_sequence=expand_mesh_sequence)
     if len(domains) == 1:
         return domains[0]
     elif domains:
@@ -252,9 +434,11 @@ def find_geometric_dimension(expr):
     """Find the geometric dimension of an expression."""
     gdims = set()
     for t in traverse_unique_terminals(expr):
-        domain = extract_unique_domain(t)
-        if domain is not None:
-            gdims.add(domain.geometric_dimension())
+        # Can have multiple domains of the same cell type.
+        domains = extract_domains(t)
+        if len(domains) > 0:
+            (gdim,) = set(domain.geometric_dimension() for domain in domains)
+            gdims.add(gdim)
 
     if len(gdims) != 1:
         raise ValueError("Cannot determine geometric dimension from expression.")

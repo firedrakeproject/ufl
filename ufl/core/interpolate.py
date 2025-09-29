@@ -8,14 +8,12 @@
 #
 # Modified by Nacime Bouziani, 2021-2022
 
-from ufl.action import Action
 from ufl.argument import Argument, Coargument
-from ufl.coefficient import Cofunction
 from ufl.constantvalue import as_ufl
 from ufl.core.base_form_operator import BaseFormOperator
 from ufl.core.ufl_type import ufl_type
 from ufl.duals import is_dual
-from ufl.form import BaseForm, Form
+from ufl.form import BaseForm
 from ufl.functionspace import AbstractFunctionSpace
 
 
@@ -35,30 +33,31 @@ class Interpolate(BaseFormOperator):
             v: the FunctionSpace to interpolate into or the Coargument
                 defined on the dual of the FunctionSpace to interpolate into.
         """
-        # This check could be more rigorous.
-        dual_args = (Coargument, Cofunction, Form, Action, BaseFormOperator)
-
-        if isinstance(v, AbstractFunctionSpace):
-            if is_dual(v):
-                raise ValueError("Expecting a primal function space.")
-            v = Argument(v.dual(), 0)
-        elif not isinstance(v, dual_args):
-            raise ValueError(
-                "Expecting the second argument to be FunctionSpace, FiniteElement or dual."
-            )
+        dual_args = (Coargument, BaseForm)
 
         expr = as_ufl(expr)
         if isinstance(expr, dual_args):
             raise ValueError("Expecting the first argument to be primal.")
 
+        if isinstance(v, AbstractFunctionSpace):
+            if is_dual(v):
+                raise ValueError("Expecting a primal function space.")
+            from ufl.algorithms import extract_arguments
+
+            expr_args = extract_arguments(expr)
+            is_adjoint = len(expr_args) and expr_args[0].number() == 0
+            v = Argument(v.dual(), 1 if is_adjoint else 0)
+        elif not isinstance(v, dual_args):
+            raise ValueError(
+                "Expecting the second argument to be FunctionSpace, Coargument, or BaseForm."
+            )
+
         # Reversed order convention
         argument_slots = (v, expr)
         # Get the primal space (V** = V)
-        if isinstance(v, BaseForm):
-            arg, *_ = v.arguments()
-            function_space = arg.ufl_function_space()
-        else:
-            function_space = v.ufl_function_space().dual()
+        arg, *_ = v.arguments()
+        function_space = arg.ufl_function_space()
+
         # Set the operand as `expr` for DAG traversal purpose.
         operand = expr
         BaseFormOperator.__init__(
