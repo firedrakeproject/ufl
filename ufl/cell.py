@@ -479,9 +479,7 @@ def as_cell(cell: AbstractCell | str | tuple[AbstractCell, ...]) -> AbstractCell
     if isinstance(cell, AbstractCell):
         return cell
     elif isinstance(cell, str):
-        from fuse import constructCellComplex
-        return constructCellComplex(cell)
-        # return Cell(cell)
+        return Cell(cell)
     elif isinstance(cell, tuple):
         return TensorProductCell(*cell)
     else:
