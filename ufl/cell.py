@@ -511,12 +511,11 @@ class CellSequence(AbstractCell):
             cellname: Name of the cell
         """
         self._cells = cells
-        #self._tdim = len(self._sub_entity_celltypes) - 1
+        self._tdim = max(cell.topological_dimension() for cell in cells)
 
     def topological_dimension(self) -> int:
         """Return the dimension of the topology of this cell."""
-        #return self._tdim
-        raise RuntimeError(f"Should not call this method on {type(self)}")
+        return self._tdim
 
     def is_simplex(self) -> bool:
         """Return True if this is a simplex cell."""
