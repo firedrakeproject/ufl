@@ -921,8 +921,8 @@ class GradRuleset(GenericDerivativeRuleset):
                 assert ndof > 0
                 K = JacobianInverse(d)
                 rdim, gdim = K.ufl_shape
-                if rdim != ref_dim:
-                    raise RuntimeError(f"{rdim} != {ref_dim}")
+                if rdim > ref_dim:
+                    raise RuntimeError(f"{rdim} > {ref_dim}")
                 if gdim != self._var_shape[0]:
                     raise RuntimeError(f"{gdim} != {self._var_shape[0]}")
                 # Note that rgrad[dofoffset + [0,ndof), [0,rdim), [0,rdim)] are the components
