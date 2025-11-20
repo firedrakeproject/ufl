@@ -98,9 +98,11 @@ class SumDegreeEstimator(MultiFunction):
         This is used when derivatives are taken. It does not reduce the degree when
         TensorProduct elements or quadrilateral elements are involved.
         """
-        # Can have multiple domains of the same cell type.
-        (cell,) = set(d.ufl_cell() for d in extract_domains(v))
-        if isinstance(f, int) and cell.cellname() not in ["quadrilateral", "hexahedron"]:
+        # Can have multiple domains e.g. in mixed cell type problems.
+        cells = set(d.ufl_cell() for d in extract_domains(v))
+        if isinstance(f, int) and all(
+            cell.cellname not in ["quadrilateral", "hexahedron"] for cell in cells
+        ):
             return max(f - 1, 0)
         else:
             return f
@@ -269,7 +271,7 @@ class SumDegreeEstimator(MultiFunction):
         If b is a positive integer: degree(a**b) == degree(a)*b
         otherwise use the heuristic: degree(a**b) == degree(a) + 2.
         """
-        f, g = v.ufl_operands
+        _f, g = v.ufl_operands
 
         if isinstance(g, IntValue):
             gi = g.value()

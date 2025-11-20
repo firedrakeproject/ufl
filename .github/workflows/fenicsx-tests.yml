@@ -17,14 +17,12 @@ jobs:
     runs-on: ubuntu-24.04
 
     env:
-      CC: gcc-12
-      CXX: g++-12
       PETSC_ARCH: linux-gnu-real-64
 
     steps:
       - uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.12
 
@@ -89,7 +87,9 @@ jobs:
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Developer -B build -S dolfinx/cpp/
           cmake --build build
           cmake --install build
-          python3 -m pip install --break-system-packages -r dolfinx/python/build-requirements.txt
-          python3 -m pip -v install --break-system-packages --no-build-isolation --check-build-dependencies --config-settings=cmake.build-type="Developer" dolfinx/python/[ci]
+          python3 -m pip install scikit-build-core
+          cd dolfinx/python
+          python3 -m scikit_build_core.build requires | python -c "import sys, json; print(' '.join(json.load(sys.stdin)))" | xargs pip install
+          python3 -m pip -v install --break-system-packages --no-build-isolation --check-build-dependencies --config-settings=cmake.build-type="Developer" .[ci]
       - name: Run DOLFINx unit tests
         run: python3 -m pytest -n auto dolfinx/python/test/unit

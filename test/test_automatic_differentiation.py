@@ -11,8 +11,6 @@ algorithm at a technical level, and are thus implementation specific.
 Other tests check for mathematical correctness of diff and derivative.
 """
 
-import sys
-
 import pytest
 from utils import FiniteElement, LagrangeElement
 
@@ -361,24 +359,24 @@ def _test_no_derivatives_but_still_changed(self, collection):
 
 
 def test_only_terminals_no_change(self, d_expr):
-    d, ex = d_expr
+    _d, ex = d_expr
     _test_no_derivatives_no_change(self, ex.terminals)
 
 
 def test_no_derivatives_no_change(self, d_expr):
-    d, ex = d_expr
+    _d, ex = d_expr
     _test_no_derivatives_no_change(self, ex.noncompounds)
 
 
 def xtest_compounds_no_derivatives_no_change(
     self, d_expr
 ):  # This test fails with expand_compounds enabled
-    d, ex = d_expr
+    _d, ex = d_expr
     _test_no_derivatives_no_change(self, ex.compounds)
 
 
 def test_zero_derivatives_of_terminals_produce_the_right_types_and_shapes(self, d_expr):
-    d, ex = d_expr
+    _d, ex = d_expr
     _test_zero_derivatives_of_terminals_produce_the_right_types_and_shapes(self, ex)
 
 
@@ -405,7 +403,7 @@ def _test_zero_derivatives_of_terminals_produce_the_right_types_and_shapes(self,
 
 
 def test_zero_diffs_of_terminals_produce_the_right_types_and_shapes(self, d_expr):
-    d, ex = d_expr
+    _d, ex = d_expr
     _test_zero_diffs_of_terminals_produce_the_right_types_and_shapes(self, ex)
 
 
@@ -433,7 +431,7 @@ def _test_zero_diffs_of_terminals_produce_the_right_types_and_shapes(self, colle
 
 
 def test_zero_derivatives_of_noncompounds_produce_the_right_types_and_shapes(self, d_expr):
-    d, ex = d_expr
+    _d, ex = d_expr
     _test_zero_derivatives_of_noncompounds_produce_the_right_types_and_shapes(self, ex)
 
 
@@ -453,7 +451,7 @@ def _test_zero_derivatives_of_noncompounds_produce_the_right_types_and_shapes(se
 
 
 def test_zero_diffs_of_noncompounds_produce_the_right_types_and_shapes(self, d_expr):
-    d, ex = d_expr
+    _d, ex = d_expr
     _test_zero_diffs_of_noncompounds_produce_the_right_types_and_shapes(self, ex)
 
 
@@ -477,7 +475,7 @@ def _test_zero_diffs_of_noncompounds_produce_the_right_types_and_shapes(self, co
 
 
 def test_nonzero_derivatives_of_noncompounds_produce_the_right_types_and_shapes(self, d_expr):
-    d, ex = d_expr
+    _d, ex = d_expr
     _test_nonzero_derivatives_of_noncompounds_produce_the_right_types_and_shapes(self, ex)
 
 
@@ -505,7 +503,7 @@ def _test_nonzero_derivatives_of_noncompounds_produce_the_right_types_and_shapes
 
 
 def test_nonzero_diffs_of_noncompounds_produce_the_right_types_and_shapes(self, d_expr):
-    d, ex = d_expr
+    _d, ex = d_expr
     _test_nonzero_diffs_of_noncompounds_produce_the_right_types_and_shapes(self, ex)
 
 
@@ -538,7 +536,7 @@ def _test_nonzero_diffs_of_noncompounds_produce_the_right_types_and_shapes(self,
 
 
 def test_grad_coeff(self, d_expr):
-    d, collection = d_expr
+    _d, collection = d_expr
 
     u = collection.shared_objects.u
     v = collection.shared_objects.v
@@ -563,7 +561,7 @@ def test_grad_coeff(self, d_expr):
 
 
 def test_derivative_grad_coeff(self, d_expr):
-    d, collection = d_expr
+    _d, collection = d_expr
 
     u = collection.shared_objects.u
     v = collection.shared_objects.v
@@ -586,7 +584,7 @@ def test_derivative_grad_coeff(self, d_expr):
 
 
 def xtest_derivative_grad_coeff_with_variation_components(self, d_expr):
-    d, collection = d_expr
+    _d, collection = d_expr
 
     v = collection.shared_objects.v
     w = collection.shared_objects.w
@@ -630,7 +628,7 @@ def xtest_derivative_grad_coeff_with_variation_components(self, d_expr):
 @pytest.mark.parametrize("lower_geo", [True, False])
 @pytest.mark.parametrize("apply_deriv", [True, False])
 def test_diff_grad_jacobian(cell, gdim, order, lower_alg, lower_geo, apply_deriv):
-    tdim = cell.topological_dimension()
+    tdim = cell.topological_dimension
 
     domain = Mesh(LagrangeElement(cell, order, (gdim,)))
 
@@ -679,9 +677,8 @@ def test_diff_grad_jacobian(cell, gdim, order, lower_alg, lower_geo, apply_deriv
 @pytest.mark.parametrize("lower_alg", [True, False])
 @pytest.mark.parametrize("lower_geo", [True, False])
 @pytest.mark.parametrize("apply_deriv", [True, False])
-@pytest.mark.skipif(sys.version_info >= (3, 14), reason="Hits recursion error on Python 3.14.0rc1 ")
 def test_diff_grad_grad_jacobian(cell, gdim, order, lower_alg, lower_geo, apply_deriv):
-    tdim = cell.topological_dimension()
+    tdim = cell.topological_dimension
 
     domain = Mesh(LagrangeElement(cell, order, (gdim,)))
 

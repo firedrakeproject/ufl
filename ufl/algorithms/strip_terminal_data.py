@@ -89,9 +89,11 @@ def replace_terminal_data(o, mapping):
     """Return a new form where the terminals have been replaced using the provided mapping.
 
     Args:
-        o: The object to have its terminals replaced. This must either be a Form or Integral.
-        mapping: A mapping suitable for reconstructing the form such as the one
-            returned by strip_terminal_data.
+        o:
+            The object to have its terminals replaced. This must either be a Form or Integral.
+        mapping:
+            A mapping suitable for reconstructing the form such as the one returned by
+            strip_terminal_data.
 
     Returns:
         The new form.
@@ -128,7 +130,7 @@ def strip_domain(domain):
         return Mesh(domain.ufl_coordinate_element(), domain.ufl_id())
     elif isinstance(domain, MeshView):
         return MeshView(
-            strip_domain(domain.ufl_mesh()), domain.topological_dimension(), domain.ufl_id()
+            strip_domain(domain.ufl_mesh()), domain.topological_dimension, domain.ufl_id()
         )
     else:
         raise NotImplementedError(f"{type(domain)} cannot be stripped")

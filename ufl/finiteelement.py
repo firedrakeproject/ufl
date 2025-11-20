@@ -13,10 +13,9 @@
 from __future__ import annotations
 
 import abc as _abc
-import typing
 from collections.abc import Sequence
 
-from ufl.cell import Cell as _Cell
+from ufl.cell import AbstractCell
 from ufl.pullback import AbstractPullback as _AbstractPullback
 from ufl.sobolevspace import SobolevSpace as _SobolevSpace
 from ufl.utils.sequences import product
@@ -63,7 +62,7 @@ class AbstractFiniteElement(_abc.ABC):
         """Return the pullback for this element."""
 
     @_abc.abstractproperty
-    def embedded_superdegree(self) -> typing.Optional[int]:
+    def embedded_superdegree(self) -> int | None:
         """Degree of the minimum degree Lagrange space that spans this element.
 
         This returns the degree of the lowest degree Lagrange space such
@@ -95,7 +94,7 @@ class AbstractFiniteElement(_abc.ABC):
         """
 
     @_abc.abstractproperty
-    def cell(self) -> _Cell:
+    def cell(self) -> AbstractCell:
         """Return the cell of the finite element."""
 
     @_abc.abstractproperty

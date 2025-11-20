@@ -50,7 +50,7 @@ jobs:
       - name: Build sdist and wheel
         run: python -m build .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           path: dist/*
 
@@ -64,9 +64,9 @@ jobs:
       url: https://test.pypi.org/p/fenics-ufl
     permissions:
       id-token: write
-    
+
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: artifact
           path: dist
@@ -75,7 +75,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-  
+
   upload_pypi:
     name: Upload to PyPI (optional)
     if: ${{ github.event.inputs.pypi_publish == 'true' }}
@@ -86,9 +86,9 @@ jobs:
       url: https://pypi.org/p/fenics-ufl
     permissions:
       id-token: write
-    
+
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: artifact
           path: dist

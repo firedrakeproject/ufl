@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod, abstractproperty
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -68,7 +68,7 @@ class AbstractPullback(ABC):
     def is_identity(self) -> bool:
         """Is this pull back the identity (or the identity applied to mutliple components)."""
 
-    def apply(self, expr: Expr, domain: Optional[AbstractDomain] = None) -> Expr:
+    def apply(self, expr: Expr, domain: AbstractDomain | None = None) -> Expr:
         """Apply the pull back.
 
         Args:
@@ -158,7 +158,7 @@ class ContravariantPiola(AbstractPullback):
         Returns:
             The value shape when the pull back is applied to the given element
         """
-        gdim = domain.geometric_dimension()
+        gdim = domain.geometric_dimension
         return element.reference_value_shape[:-1] + (gdim,)
 
 
@@ -202,7 +202,7 @@ class CovariantPiola(AbstractPullback):
         Returns:
             The value shape when the pull back is applied to the given element
         """
-        gdim = domain.geometric_dimension()
+        gdim = domain.geometric_dimension
         return element.reference_value_shape[:-1] + (gdim,)
 
 
@@ -287,7 +287,7 @@ class DoubleContravariantPiola(AbstractPullback):
         Returns:
             The value shape when the pull back is applied to the given element
         """
-        gdim = domain.geometric_dimension()
+        gdim = domain.geometric_dimension
         return element.reference_value_shape[:-2] + (gdim, gdim)
 
 
@@ -331,7 +331,7 @@ class DoubleCovariantPiola(AbstractPullback):
         Returns:
             The value shape when the pull back is applied to the given element
         """
-        gdim = domain.geometric_dimension()
+        gdim = domain.geometric_dimension
         return element.reference_value_shape[:-2] + (gdim, gdim)
 
 
@@ -377,7 +377,7 @@ class CovariantContravariantPiola(AbstractPullback):
         Returns:
             The value shape when the pull back is applied to the given element
         """
-        gdim = domain.geometric_dimension()
+        gdim = domain.geometric_dimension
         return element.reference_value_shape[:-2] + (gdim, gdim)
 
 

@@ -343,7 +343,8 @@ def sym(A):
 def Dx(f, *i):
     """Take the partial derivative of f with respect to spatial variable number i.
 
-    Equivalent to f.dx(*i).
+    Equivalent to ``f.dx(*i)``.
+
     """
     f = as_ufl(f)
     return f.dx(*i)
@@ -375,7 +376,7 @@ def diff(f, v):
     f = as_ufl(f)
     if isinstance(v, SpatialCoordinate):
         return grad(f)
-    elif isinstance(v, (Variable, Coefficient)):
+    elif isinstance(v, Variable | Coefficient):
         return VariableDerivative(f, v)
     else:
         raise ValueError("Expecting a Variable or SpatialCoordinate in diff.")
@@ -385,13 +386,18 @@ def grad(f):
     """Take the gradient of f.
 
     This operator follows the grad convention where
+
+    .. code-block:: python
+
       grad(s)[i] = s.dx(i)
-      grad(v)[i,j] = v[i].dx(j)
-      grad(T)[:,i] = T[:].dx(i)
+      grad(v)[i, j] = v[i].dx(j)
+      grad(T)[:, i] = T[:].dx(i)
+
     for scalar expressions s, vector expressions v,
     and arbitrary rank tensor expressions T.
 
     See also: :py:func:`nabla_grad`
+
     """
     f = as_ufl(f)
     return Grad(f)
@@ -401,8 +407,12 @@ def div(f):
     """Take the divergence of f.
 
     This operator follows the div convention where
+
+    .. code-block::
+
       div(v) = v[i].dx(i)
       div(T)[:] = T[:,i].dx(i)
+
     for vector expressions v, and
     arbitrary rank tensor expressions T.
 
@@ -416,9 +426,13 @@ def nabla_grad(f):
     """Take the gradient of f.
 
     This operator follows the grad convention where
+
+    .. code-block::
+
       nabla_grad(s)[i] = s.dx(i)
       nabla_grad(v)[i,j] = v[j].dx(i)
       nabla_grad(T)[i,:] = T[:].dx(i)
+
     for scalar expressions s, vector expressions v,
     and arbitrary rank tensor expressions T.
 
@@ -432,8 +446,12 @@ def nabla_div(f):
     """Take the divergence of f.
 
     This operator follows the div convention where
+
+    .. code-block::
+
       nabla_div(v) = v[i].dx(i)
       nabla_div(T)[:] = T[i,:].dx(i)
+
     for vector expressions v, and
     arbitrary rank tensor expressions T.
 
@@ -596,9 +614,9 @@ def _mathfunction(f, cls):
     """A mat function."""
     f = as_ufl(f)
     r = cls(f)
-    if isinstance(r, (RealValue, Zero, int, float)):
+    if isinstance(r, RealValue | Zero | int | float):
         return float(r)
-    if isinstance(r, (ComplexValue, complex)):
+    if isinstance(r, ComplexValue | complex):
         return complex(r)
     return r
 
@@ -667,12 +685,12 @@ def atan2(f1, f2):
     """Take the inverse tangent with two the arguments f1 and f2."""
     f1 = as_ufl(f1)
     f2 = as_ufl(f2)
-    if isinstance(f1, (ComplexValue, complex)) or isinstance(f2, (ComplexValue, complex)):
+    if isinstance(f1, ComplexValue | complex) or isinstance(f2, ComplexValue | complex):
         raise TypeError("atan2 is incompatible with complex numbers.")
     r = Atan2(f1, f2)
-    if isinstance(r, (RealValue, Zero, int, float)):
+    if isinstance(r, RealValue | Zero | int | float):
         return float(r)
-    if isinstance(r, (ComplexValue, complex)):
+    if isinstance(r, ComplexValue | complex):
         return complex(r)
     return r
 
@@ -756,7 +774,7 @@ def exterior_derivative(f):
 
     domain = f.ufl_domain()
 
-    gdim = domain.geometric_dimension()
+    gdim = domain.geometric_dimension
     space = element.sobolev_space
 
     if space == sobolevspace.L2:

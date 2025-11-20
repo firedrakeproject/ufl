@@ -20,7 +20,7 @@ from ufl.algorithms.apply_derivatives import apply_coordinate_derivatives, apply
 from ufl.algorithms.apply_function_pullbacks import apply_function_pullbacks
 from ufl.algorithms.apply_geometry_lowering import apply_geometry_lowering
 from ufl.algorithms.apply_integral_scaling import apply_integral_scaling
-from ufl.algorithms.apply_restrictions import apply_restrictions
+from ufl.algorithms.apply_restrictions import apply_restrictions, default_restriction_map
 from ufl.algorithms.check_arities import check_form_arity
 from ufl.algorithms.comparison_checker import do_comparison_check
 
@@ -150,15 +150,21 @@ def _check_facet_geometry(integral_data):
     """Check facet geometry."""
     for itg_data in integral_data:
         for itg in itg_data.integrals:
-            it = itg_data.integral_type
-            # Facet geometry is only valid in facet integrals.
-            # Allowing custom integrals to pass as well, although
-            # that's not really strict enough.
-            if not ("facet" in it or "custom" in it or "interface" in it):
-                # Not a facet integral
-                for expr in traverse_unique_terminals(itg.integrand()):
-                    cls = expr._ufl_class_
-                    if issubclass(cls, GeometricFacetQuantity):
+            for expr in traverse_unique_terminals(itg.integrand()):
+                cls = expr._ufl_class_
+                if issubclass(cls, GeometricFacetQuantity):
+                    domain = extract_unique_domain(expr, expand_mesh_sequence=False)
+                    if isinstance(domain, MeshSequence):
+                        raise RuntimeError(
+                            f"Not expecting a terminal object on a "
+                            f"mesh sequence at this stage: found {expr!r}"
+                        )
+                    it = itg_data.domain_integral_type_map[domain]
+                    # Facet geometry is only valid in facet integrals.
+                    # Allowing custom integrals to pass as well, although
+                    # that's not really strict enough.
+                    if not ("facet" in it or "custom" in it or "interface" in it):
+                        # Not a facet integral
                         raise ValueError(f"Integral of type {it} cannot contain a {cls.__name__}.")
 
 
@@ -269,16 +275,6 @@ def compute_form_data(
 
     The default arguments configured to behave the way old FFC expects.
     """
-    # Currently, only integral_type="cell" can be used with MeshSequence.
-    for integral in form.integrals():
-        if integral.integral_type() != "cell":
-            all_domains = extract_domains(integral.integrand(), expand_mesh_sequence=False)
-            if any(isinstance(m, MeshSequence) for m in all_domains):
-                raise NotImplementedError(f"""
-                    Only integral_type="cell" can be used with MeshSequence;
-                    got integral_type={integral.integral_type()}
-                """)
-
     # TODO: Move this to the constructor instead
     self = FormData()
 
@@ -345,10 +341,6 @@ def compute_form_data(
 
     form = apply_coordinate_derivatives(form)
 
-    # Propagate restrictions to terminals
-    if do_apply_restrictions:
-        form = apply_restrictions(form, apply_default=do_apply_default_restrictions)
-
     # If in real mode, remove any complex nodes introduced during form processing.
     if not complex_mode:
         form = remove_complex_nodes(form)
@@ -397,7 +389,7 @@ def compute_form_data(
     self.rank = len(self.original_form.arguments())
 
     # Extract common geometric dimension (topological is not common!)
-    self.geometric_dimension = self.original_form.integrals()[0].ufl_domain().geometric_dimension()
+    self.geometric_dimension = self.original_form.integrals()[0].ufl_domain().geometric_dimension
 
     # --- Build mapping from old incomplete element objects to new
     # well defined elements.  This is to support the Expression
@@ -447,6 +439,15 @@ def compute_form_data(
     else:
         if not do_replace_functions:
             raise ValueError("Must call with do_replace_functions=True")
+        for itg_data in self.integral_data:
+            new_integrals = []
+            for integral in itg_data.integrals:
+                # Propagate restrictions as required by CoefficientSplitter.
+                # Can not yet apply default restrictions at this point
+                # as restrictions can only be applied to the components.
+                new_integral = apply_restrictions(integral)
+                new_integrals.append(new_integral)
+            itg_data.integrals = new_integrals
         # Split coefficients that are contained in ``coefficients_to_split``
         # into components, and store a dict in ``self`` that maps
         # each coefficient to its components.
@@ -466,8 +467,45 @@ def compute_form_data(
             new_integrals = []
             for integral in itg_data.integrals:
                 integrand = coeff_splitter(integral.integrand())
+                # Potentially need to call `remove_component_tensors()` here, but
+                # early-simplifications of Indexed objects seem sufficient.
                 if not isinstance(integrand, Zero):
                     new_integrals.append(integral.reconstruct(integrand=integrand))
+            itg_data.integrals = new_integrals
+
+    # Propagate restrictions to terminals
+    if do_apply_restrictions:
+        for itg_data in self.integral_data:
+            # Need the following if block in case not all participating domains
+            # have been included in the Measure (backwards compat).
+            if all(
+                not integral_type.startswith("interior_facet")
+                for _, integral_type in itg_data.domain_integral_type_map.items()
+            ):
+                continue
+            if do_apply_default_restrictions:
+                default_restrictions = {
+                    domain: default_restriction_map[integral_type]
+                    for domain, integral_type in itg_data.domain_integral_type_map.items()
+                }
+                # Need the following dict update in case not all participating domains
+                # have been included in the Measure (backwards compat).
+                extra = {
+                    domain: default_restriction_map[itg_data.integral_type]
+                    for integral in itg_data.integrals
+                    for domain in extract_domains(integral)
+                    if domain not in default_restrictions
+                }
+                default_restrictions.update(extra)
+            else:
+                default_restrictions = None
+            new_integrals = []
+            for integral in itg_data.integrals:
+                new_integral = apply_restrictions(
+                    integral,
+                    default_restrictions=default_restrictions,
+                )
+                new_integrals.append(new_integral)
             itg_data.integrals = new_integrals
 
     # --- Checks

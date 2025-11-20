@@ -33,30 +33,40 @@ class Interpolate(BaseFormOperator):
             v: the FunctionSpace to interpolate into or the Coargument
                 defined on the dual of the FunctionSpace to interpolate into.
         """
-        dual_args = (Coargument, BaseForm)
+        from ufl.algorithms import extract_arguments
 
         expr = as_ufl(expr)
-        if isinstance(expr, dual_args):
-            raise ValueError("Expecting the first argument to be primal.")
+
+        if isinstance(expr, BaseForm):
+            expr_args = expr.arguments()
+            if not isinstance(expr_args[0], Coargument):
+                raise ValueError("Expecting the first argument to be primal.")
+            expr_args = expr_args[1:]
+        else:
+            expr_args = extract_arguments(expr)
+        expr_arg_numbers = {arg.number() for arg in expr_args}
 
         if isinstance(v, AbstractFunctionSpace):
             if is_dual(v):
                 raise ValueError("Expecting a primal function space.")
-            from ufl.algorithms import extract_arguments
+            n = 1 if expr_arg_numbers == {0} else 0
+            v = Argument(v.dual(), n)
+            dual_arg_numbers = {n}
+        elif isinstance(v, BaseForm):
+            dual_arg_numbers = {arg.number() for arg in v.arguments() if is_dual(arg)}
+        else:
+            raise ValueError("Expecting the second argument to be FunctionSpace or BaseForm.")
 
-            expr_args = extract_arguments(expr)
-            is_adjoint = len(expr_args) and expr_args[0].number() == 0
-            v = Argument(v.dual(), 1 if is_adjoint else 0)
-        elif not isinstance(v, dual_args):
-            raise ValueError(
-                "Expecting the second argument to be FunctionSpace, Coargument, or BaseForm."
-            )
+        # Check valid argument numbering
+        if expr_arg_numbers & dual_arg_numbers:
+            raise ValueError("Same argument numbers in first and second operands to interpolate.")
+        if expr_arg_numbers | dual_arg_numbers not in [set(), {0}, {0, 1}]:
+            raise ValueError("Non-contiguous argument numbers in interpolate.")
 
         # Reversed order convention
         argument_slots = (v, expr)
         # Get the primal space (V** = V)
-        arg, *_ = v.arguments()
-        function_space = arg.ufl_function_space()
+        function_space = v.arguments()[0].ufl_function_space()
 
         # Set the operand as `expr` for DAG traversal purpose.
         operand = expr
@@ -99,8 +109,11 @@ def interpolate(expr, v):
     """Create symbolic representation of the interpolation operator.
 
     Args:
-        expr: a UFL expression to interpolate.
-        v: the FunctionSpace to interpolate into or the Coargument
+        expr:
+            a UFL expression to interpolate.
+        v:
+            the FunctionSpace to interpolate into or the Coargument
             defined on the dual of the FunctionSpace to interpolate into.
+
     """
     return Interpolate(expr, v)

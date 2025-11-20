@@ -1,10 +1,13 @@
 [build-system]
-requires = ["setuptools>=62", "wheel"]
+requires = [
+    "setuptools>=77.0.3", # Ensuring license field is correctly parsed
+    "wheel",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "fenics-ufl"
-version = "2025.2.0.dev0"
+version = "2025.3.0.dev0"
 authors = [{ name = "UFL contributors" }]
 maintainers = [
     { email = "fenics-steering-council@googlegroups.com" },
@@ -12,8 +15,9 @@ maintainers = [
 ]
 description = "Unified Form Language"
 readme = "README.md"
-license = { file = "COPYING.lesser" }
-requires-python = ">=3.9.0"
+license = "LGPL-3.0-or-later"
+license-files = ["COPYING*"]
+requires-python = ">=3.10.0"
 dependencies = ["numpy"]
 
 [project.urls]
@@ -26,7 +30,7 @@ funding = "https://numfocus.org/donate"
 [project.optional-dependencies]
 lint = ["mypy", "ruff"]
 typing = ["types-colorama"]
-docs = ["sphinx", "sphinx_rtd_theme"]
+docs = ["sphinx", "pydata-sphinx-theme", "sphinx_codeautolink[ipython]"]
 test = ["pytest"]
 ci = [
     "coveralls",
@@ -59,8 +63,8 @@ docstring-code-format = true
 [tool.ruff.lint]
 select = [
     # "N", # pep8-naming
-    "E", # pycodestyle
-    "W", # pycodestyle
+    "E",   # pycodestyle
+    "W",   # pycodestyle
     "D",   # pydocstyle
     "F",   # pyflakes
     "I",   # isort
@@ -74,11 +78,7 @@ select = [
     # "B", # https://docs.astral.sh/ruff/rules/#flake8-bugbear-b
     # "A", # https://docs.astral.sh/ruff/rules/#flake8-builtins-a
 ]
-ignore = [
-    "RUF005",
-    "RUF012",
-    "UP045", # Ractivate once Python 3.9 EoL
-]
+ignore = ["RUF005", "RUF012"]
 allowed-confusables = ["𝐚", "𝐀", "∕", "γ", "⨯", "∨"]
 
 [tool.ruff.lint.per-file-ignores]

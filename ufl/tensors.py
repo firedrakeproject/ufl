@@ -151,7 +151,7 @@ class ListTensor(Operator):
         if len(key) == 0:
             return self
         k = key[0]
-        if isinstance(k, (int, FixedIndex)):
+        if isinstance(k, int | FixedIndex):
             sub = self.ufl_operands[int(k)]
             return sub if len(key) == 1 else sub[key[1:]]
 
@@ -235,14 +235,24 @@ class ComponentTensor(Operator):
         """Return a simplified Expr used in the constructor of Indexed(self, multiindex)."""
         # Untangle as_tensor(C[kk], jj)[ii] -> C[ll]
         B, jj = self.ufl_operands
+        if len(multiindex) != len(jj):
+            raise ValueError(f"len(multiindex) ({len(multiindex)}) != len(jj) ({len(jj)})")
+        rep = dict(zip(jj, multiindex))
+        # Avoid recursion and just attempt to simplify some common patterns
+        # as the result of this method is not cached.
+        if isinstance(B, Indexed):
+            C, kk = B.ufl_operands
+            if isinstance(C, ListTensor) and len(kk) == 1 and isinstance(rep[kk[0]], FixedIndex):
+                (k,) = kk
+                B = C.ufl_operands[int(rep[k])]
+                jj = MultiIndex(tuple(j for j in jj if j != k))
+                multiindex = MultiIndex(tuple(rep[j] for j in jj))
+                rep = dict(zip(jj, multiindex))
         if isinstance(B, Indexed):
             C, kk = B.ufl_operands
             if all(j in kk for j in jj):
-                ii = tuple(multiindex)
-                rep = dict(zip(jj, ii))
                 Cind = tuple(rep.get(k, k) for k in kk)
                 return Indexed(C, MultiIndex(Cind))
-
         return Operator._simplify_indexed(self, multiindex)
 
     def indices(self):
@@ -286,7 +296,7 @@ def numpy2nestedlists(arr):
 
 def _as_list_tensor(expressions):
     """Convert to a list tensor."""
-    if isinstance(expressions, (list, tuple)):
+    if isinstance(expressions, list | tuple):
         expressions = [_as_list_tensor(e) for e in expressions]
         return ListTensor(*expressions)
     else:
@@ -332,11 +342,11 @@ def as_tensor(expressions, indices=None):
             return expressions
 
         # Support numpy array, but avoid importing numpy if not needed
-        if not isinstance(expressions, (list, tuple)):
+        if not isinstance(expressions, list | tuple):
             expressions = from_numpy_to_lists(expressions)
 
         # Sanity check
-        if not isinstance(expressions, (list, tuple, Expr)):
+        if not isinstance(expressions, list | tuple | Expr):
             raise ValueError("Expecting nested list or tuple.")
 
         # Recursive conversion from nested lists to nested ListTensor
@@ -375,13 +385,13 @@ def as_matrix(expressions, indices=None):
             return expressions
 
         # To avoid importing numpy unneeded, it's quite slow...
-        if not isinstance(expressions, (list, tuple)):
+        if not isinstance(expressions, list | tuple):
             expressions = from_numpy_to_lists(expressions)
 
         # Check for expected list structure
-        if not isinstance(expressions, (list, tuple)):
+        if not isinstance(expressions, list | tuple):
             raise ValueError("Expecting nested list or tuple of Exprs.")
-        if not isinstance(expressions[0], (list, tuple)):
+        if not isinstance(expressions[0], list | tuple):
             raise ValueError("Expecting nested list or tuple of Exprs.")
     else:
         if len(indices) != 2:
@@ -400,11 +410,11 @@ def as_vector(expressions, index=None):
             return expressions
 
         # To avoid importing numpy unneeded, it's quite slow...
-        if not isinstance(expressions, (list, tuple)):
+        if not isinstance(expressions, list | tuple):
             expressions = from_numpy_to_lists(expressions)
 
         # Check for expected list structure
-        if not isinstance(expressions, (list, tuple)):
+        if not isinstance(expressions, list | tuple):
             raise ValueError("Expecting nested list or tuple of Exprs.")
     else:
         if not isinstance(index, Index):
@@ -417,9 +427,13 @@ def as_vector(expressions, index=None):
 def as_scalar(expression):
     """As scalar.
 
-    Given a scalar or tensor valued expression A, returns either of the tuples::
-      (a,b) = (A, ())
-      (a,b) = (A[indices], indices)
+    Given a scalar or tensor valued expression A, returns either of the tuples
+
+    .. code-block:: python
+
+      (a, b) = (A, ())
+      (a, b) = (A[indices], indices)
+
     such that a is always a scalar valued expression.
     """
     ii = indices(len(expression.ufl_shape))
@@ -431,9 +445,13 @@ def as_scalar(expression):
 def as_scalars(*expressions):
     """As scalars.
 
-    Given multiple scalar or tensor valued expressions A, returns either of the tuples::
-      (a,b) = (A, ())
-      (a,b) = ([A[0][indices], ..., A[-1][indices]], indices)
+    Given multiple scalar or tensor valued expressions A, returns either of the tuples
+
+    .. code-block:: python
+
+        (a, b) = (A, ())
+        (a, b) = ([A[0][indices], ..., A[-1][indices]], indices)
+
     such that a is always a list of scalar valued expressions.
     """
     ii = indices(len(expressions[0].ufl_shape))
