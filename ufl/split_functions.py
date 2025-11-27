@@ -7,10 +7,13 @@
 #
 # Modified by Anders Logg, 2008
 
+from itertools import chain
+
 from ufl.domain import extract_unique_domain
 from ufl.functionspace import FunctionSpace
 from ufl.indexed import Indexed
 from ufl.permutation import compute_indices
+from ufl.pullback import SymmetricPullback
 from ufl.tensors import ListTensor, as_matrix, as_vector
 from ufl.utils.indexflattening import flatten_multiindex, shape_to_strides
 from ufl.utils.sequences import product
@@ -34,6 +37,9 @@ def split(v):
     elif isinstance(v, ListTensor):
         # Special case: split previous output of split again
         ops = v.ufl_operands
+        while all(isinstance(comp, ListTensor) for comp in ops):
+            ops = tuple(chain.from_iterable(comp.ufl_operands for comp in ops))
+
         if all(isinstance(comp, Indexed) for comp in ops):
             args = [comp.ufl_operands[0] for comp in ops]
             if all(args[0] == args[i] for i in range(1, len(args))):
@@ -81,6 +87,11 @@ def split(v):
             # Then break when we find the subelement that covers the whole range
             if FunctionSpace(domain, element).value_size == (end - begin):
                 break
+
+    # Deal with symmetry on non-mixed spaces, only extract linearly-independent components
+    if isinstance(element.pullback, SymmetricPullback):
+        symmetry = element.pullback._symmetry
+        end -= len(symmetry) - len(set(symmetry.values()))
 
     # Build expressions representing the subfunction of v for each subelement
     offset = begin
