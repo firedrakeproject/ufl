@@ -93,7 +93,7 @@ def split(v):
     # Deal with symmetry
     if isinstance(element.pullback, SymmetricPullback):
         symmetry = element.pullback._symmetry
-        indices = symmetry.values()
+        indices = (comp for idx, comp in sorted(symmetry.items()))
     else:
         indices = range(len(element.sub_elements))
 
