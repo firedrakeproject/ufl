@@ -33,7 +33,6 @@ from ufl import (
     cos,
     derivative,
     diff,
-    div,
     dot,
     dx,
     exp,
@@ -592,13 +591,16 @@ def test_split_tensor_coefficient_derivative(self):
     s, u = split(z)
     t, v = split(test)
 
-    J = inner(s, s) + inner(u, div(s))
+    J = 0.5 * inner(s, s) + inner(s, nabla_grad(u))
 
     dJ_du = derivative(J, u, v)
     dJ_ds = derivative(J, s, t)
 
     actual = dJ_ds + dJ_du
-    expected = derivative(J, z, test)
+
+    expected = (
+        0.5 * inner(t, s) + 0.5 * inner(s, t) + inner(t, nabla_grad(u)) + inner(s, nabla_grad(v))
+    )
 
     assertEqualBySampling(actual, expected)
 
