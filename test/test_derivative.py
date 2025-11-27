@@ -577,10 +577,13 @@ def test_multiple_indexed_coefficient_derivative(self):
 
 def test_split_tensor_coefficient_derivative(self):
     cell = triangle
-    domain = Mesh(LagrangeElement(cell, 1, (2,)))
+    dim = 2
+    domain = Mesh(LagrangeElement(cell, 1, (dim,)))
     symmetry = {(0, 0): 0, (0, 1): 1, (1, 0): 1, (1, 1): 2}
-    S = SymmetricElement(symmetry, [LagrangeElement(cell, 1)] * 3)
-    V = LagrangeElement(cell, 1, (2,))
+    ncomp = (dim * (dim + 1)) // 2
+
+    S = SymmetricElement(symmetry, [LagrangeElement(cell, 1)] * ncomp)
+    V = LagrangeElement(cell, 1, (dim,))
 
     element = MixedElement([S, V])
     Z = FunctionSpace(domain, element)
