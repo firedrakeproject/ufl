@@ -3,7 +3,7 @@ __date__ = "2009-02-17 -- 2009-02-17"
 
 from itertools import chain
 
-from utils import FiniteElement, LagrangeElement, MixedElement
+from utils import FiniteElement, LagrangeElement, MixedElement, SymmetricElement
 
 from ufl import (
     CellDiameter,
@@ -33,6 +33,7 @@ from ufl import (
     cos,
     derivative,
     diff,
+    div,
     dot,
     dx,
     exp,
@@ -570,6 +571,31 @@ def test_multiple_indexed_coefficient_derivative(self):
 
     actual = derivative(cos(u[i] * w[i]), (u[2], w[1]), (vu, vw))
     expected = -sin(u[i] * w[i]) * (vu * w[2] + u[1] * vw)
+
+    assertEqualBySampling(actual, expected)
+
+
+def test_split_tensor_coefficient_derivative(self):
+    cell = triangle
+    domain = Mesh(LagrangeElement(cell, 1, (2,)))
+    symmetry = {(0, 0): 0, (0, 1): 1, (1, 0): 1, (1, 1): 2}
+    S = SymmetricElement(symmetry, [LagrangeElement(cell, 1)] * 3)
+    V = LagrangeElement(cell, 1, (2,))
+
+    element = MixedElement([S, V])
+    Z = FunctionSpace(domain, element)
+    z = Coefficient(Z)
+    test = TestFunction(Z)
+    s, u = split(z)
+    t, v = split(test)
+
+    J = inner(s, s) + inner(u, div(s))
+
+    dJ_du = derivative(J, u, v)
+    dJ_ds = derivative(J, s, t)
+
+    actual = dJ_ds + dJ_du
+    expected = derivative(J, z, test)
 
     assertEqualBySampling(actual, expected)
 
