@@ -86,16 +86,21 @@ def split(v):
             if FunctionSpace(domain, element).value_size == (end - begin):
                 break
 
-    # Deal with symmetry, only extract linearly-independent components
-    if isinstance(element.pullback, SymmetricPullback):
-        symmetry = element.pullback._symmetry
-        end -= len(symmetry) - len(set(symmetry.values()))
-
     # Build expressions representing the subfunction of v for each subelement
     offset = begin
     sub_functions = []
-    domains = domain.iterable_like(element)
-    for i, (d, e) in enumerate(zip(domains, element.sub_elements)):
+
+    # Deal with symmetry
+    if isinstance(element.pullback, SymmetricPullback):
+        symmetry = element.pullback._symmetry
+        indices = symmetry.values()
+    else:
+        indices = range(len(element.sub_elements))
+
+    domains = tuple(domain.iterable_like(element))
+    for i in indices:
+        d = domains[i]
+        e = element.sub_elements[i]
         # Get shape, size, indices, and v components
         # corresponding to subelement value
         shape = FunctionSpace(d, e).value_shape
