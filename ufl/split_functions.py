@@ -40,7 +40,7 @@ def split(v):
 
         if all(isinstance(comp, Indexed) for comp in ops):
             args = [comp.ufl_operands[0] for comp in ops]
-            if len(args) == product(v.ufl_shape) and all(args[0] == a for a in args[1:]):
+            if all(args[0] == args[i] for i in range(1, len(args))):
                 # Get innermost terminal here and its element
                 v = args[0]
                 # Get relevant range of v components
