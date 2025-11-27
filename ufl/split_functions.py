@@ -7,14 +7,14 @@
 #
 # Modified by Anders Logg, 2008
 
-from itertools import chain
+import numpy as np
 
 from ufl.domain import extract_unique_domain
 from ufl.functionspace import FunctionSpace
 from ufl.indexed import Indexed
 from ufl.permutation import compute_indices
 from ufl.pullback import SymmetricPullback
-from ufl.tensors import ListTensor, as_matrix, as_vector
+from ufl.tensors import ListTensor, as_tensor
 from ufl.utils.indexflattening import flatten_multiindex, shape_to_strides
 from ufl.utils.sequences import product
 
@@ -36,13 +36,11 @@ def split(v):
 
     elif isinstance(v, ListTensor):
         # Special case: split previous output of split again
-        ops = v.ufl_operands
-        while all(isinstance(comp, ListTensor) for comp in ops):
-            ops = tuple(chain.from_iterable(comp.ufl_operands for comp in ops))
+        ops = tuple(v[i] for i in np.ndindex(v.ufl_shape))
 
         if all(isinstance(comp, Indexed) for comp in ops):
             args = [comp.ufl_operands[0] for comp in ops]
-            if all(args[0] == args[i] for i in range(1, len(args))):
+            if len(args) == product(v.ufl_shape) and all(args[0] == a for a in args[1:]):
                 # Get innermost terminal here and its element
                 v = args[0]
                 # Get relevant range of v components
@@ -88,7 +86,7 @@ def split(v):
             if FunctionSpace(domain, element).value_size == (end - begin):
                 break
 
-    # Deal with symmetry on non-mixed spaces, only extract linearly-independent components
+    # Deal with symmetry, only extract linearly-independent components
     if isinstance(element.pullback, SymmetricPullback):
         symmetry = element.pullback._symmetry
         end -= len(symmetry) - len(set(symmetry.values()))
@@ -110,16 +108,8 @@ def split(v):
         # Shape components into same shape as subelement
         if rank == 0:
             (subv,) = components
-        elif rank <= 1:
-            subv = as_vector(components)
-        elif rank == 2:
-            subv = as_matrix(
-                [components[i * shape[1] : (i + 1) * shape[1]] for i in range(shape[0])]
-            )
         else:
-            raise ValueError(
-                f"Don't know how to split functions with sub functions of rank {rank}."
-            )
+            subv = as_tensor(np.reshape(components, shape))
 
         offset += sub_size
         sub_functions.append(subv)
