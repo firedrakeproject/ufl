@@ -6,6 +6,7 @@
 # SPDX-License-Identifier:    LGPL-3.0-or-later
 #
 # Modified by Anders Logg, 2008
+# Modified by Pablo Brubeck, 2025
 
 import numpy as np
 
