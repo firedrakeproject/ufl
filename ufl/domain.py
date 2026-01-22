@@ -245,7 +245,7 @@ class MeshSequence(AbstractDomain, UFLObject):
 
     def _ufl_sort_key_(self):
         """UFL sort key."""
-        return ("MeshSequence", tuple(m._ufl_sort_key_() for m in self._meshes))
+        return (self.geometric_dimension, self.topological_dimension, "MeshSequence", tuple(m._ufl_sort_key_() for m in self._meshes))
 
     @property
     def meshes(self):
@@ -370,6 +370,15 @@ def join_domains(domains: Sequence[AbstractDomain], expand_mesh_sequence: bool =
         for domain in joined_domains:
             unrolled_joined_domains.update(domain.meshes)
         joined_domains = unrolled_joined_domains
+    elif any(isinstance(d, MeshSequence) for d in joined_domains):
+        # If not expanding mesh sequences, we remove meshes that are
+        # contained within a MeshSequence to avoid double counting them.
+        mesh_sequences = [d for d in joined_domains if isinstance(d, MeshSequence)]
+        contained_meshes = set()
+        for ms in mesh_sequences:
+            contained_meshes.update(ms.meshes)
+
+        joined_domains = {d for d in joined_domains if d not in contained_meshes}
 
     if not joined_domains:
         return set()
