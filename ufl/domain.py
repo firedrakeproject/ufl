@@ -164,8 +164,8 @@ class Mesh(AbstractDomain, UFLObject):
     # mesh2'.
     def _ufl_sort_key_(self):
         """UFL sort key."""
-        typespecific = (self._ufl_id, self._ufl_coordinate_element)
-        return (self.geometric_dimension, self.topological_dimension, "Mesh", typespecific)
+        typespecific = (self._ufl_id, self._ufl_coordinate_element, self.geometric_dimension, self.topological_dimension)
+        return ("Mesh", typespecific)
 
     @property
     def meshes(self):
