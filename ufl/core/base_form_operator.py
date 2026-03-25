@@ -148,7 +148,9 @@ class BaseFormOperator(Operator, BaseForm, Counted):
         """Return the UFL shape of the coefficient produced by the operator."""
         if len(self.arguments()) == 0:
             return ()
-        arg, *_ = self.arguments()
+        arg, *_ = self.argument_slots()
+        if isinstance(arg, BaseForm):
+            arg, *_ = arg.arguments()
         return arg._ufl_shape
 
     def ufl_function_space(self):
@@ -158,8 +160,11 @@ class BaseFormOperator(Operator, BaseForm, Counted):
         """
         if len(self.arguments()) == 0:
             return None
-        arg, *_ = self.arguments()
-        return arg.ufl_function_space().dual()
+        arg, *_ = self.argument_slots()
+        if isinstance(arg, BaseForm):
+            arg, *_ = arg.arguments()
+            return arg._ufl_function_space
+        return arg._ufl_function_space.dual()
 
     def _ufl_expr_reconstruct_(
         self, *operands, function_space=None, derivatives=None, argument_slots=None
