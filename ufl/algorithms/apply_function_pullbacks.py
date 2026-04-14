@@ -6,26 +6,33 @@
 #
 # SPDX-License-Identifier:    LGPL-3.0-or-later
 
+import functools
+
+import ufl.classes
 from ufl.algorithms.map_integrands import map_integrand_dags
 from ufl.classes import ReferenceValue
-from ufl.corealg.multifunction import MultiFunction, memoized_handler
+from ufl.corealg.dag_traverser import DAGTraverser
 
 
-class FunctionPullbackApplier(MultiFunction):
+class FunctionPullbackApplier(DAGTraverser):
     """A pull back applier."""
 
-    def __init__(self):
-        """Initalise."""
-        MultiFunction.__init__(self)
+    @functools.singledispatchmethod
+    def process(self, o: ufl.classes.Expr) -> ufl.classes.Expr:
+        """Process ``o``."""
+        return super().process(o)
 
-    expr = MultiFunction.reuse_if_untouched
+    @process.register(ufl.classes.Expr)
+    def _(self, o: ufl.classes.Expr) -> ufl.classes.Expr:
+        return self.reuse_if_untouched(o)
 
-    def terminal(self, t):
+    @process.register(ufl.classes.Terminal)
+    def _(self, t: ufl.classes.Terminal) -> ufl.classes.Terminal:
         """Apply to a terminal."""
         return t
 
-    @memoized_handler
-    def form_argument(self, o):
+    @process.register(ufl.classes.FormArgument)
+    def _(self, o: ufl.classes.FormArgument) -> ufl.classes.Expr:
         """Apply to a form_argument."""
         # Represent 0-derivatives of form arguments on reference
         # element
@@ -58,4 +65,4 @@ def apply_function_pullbacks(expr):
     Args:
         expr: An Expression
     """
-    return map_integrand_dags(FunctionPullbackApplier(), expr)
+    return FunctionPullbackApplier()(expr)

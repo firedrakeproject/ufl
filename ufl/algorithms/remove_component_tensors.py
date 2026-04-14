@@ -8,16 +8,18 @@ This module contains classes and functions to remove component tensors.
 #
 # SPDX-License-Identifier:    LGPL-3.0-or-later
 
+import functools
 from collections import defaultdict
 
+import ufl.classes
 from ufl.algorithms.map_integrands import map_integrand_dags
 from ufl.classes import ComponentTensor, Index, MultiIndex, Zero
+from ufl.corealg.dag_traverser import DAGTraverser
 from ufl.corealg.map_dag import map_expr_dag
-from ufl.corealg.multifunction import MultiFunction
 from ufl.index_combination_utils import unique_sorted_indices
 
 
-class IndexReplacer(MultiFunction):
+class IndexReplacer(DAGTraverser):
     """Replace Indices."""
 
     def __init__(self, fimap: dict):
@@ -27,12 +29,20 @@ class IndexReplacer(MultiFunction):
            fimap: map for index replacements.
 
         """
-        MultiFunction.__init__(self)
+        super().__init__()
         self.fimap = fimap
 
-    expr = MultiFunction.reuse_if_untouched
+    @functools.singledispatchmethod
+    def process(self, o: ufl.classes.Expr) -> ufl.classes.Expr:
+        """Process ``o``."""
+        return super().process(o)
 
-    def zero(self, o):
+    @process.register(ufl.classes.Expr)
+    def _(self, o: ufl.classes.Expr) -> ufl.classes.Expr:
+        return self.reuse_if_untouched(o)
+
+    @process.register(ufl.classes.Zero)
+    def _(self, o: ufl.classes.Zero) -> ufl.classes.Zero:
         """Handle Zero."""
         indices = tuple(map(Index, o.ufl_free_indices))
         if not any(i in self.fimap for i in indices):
@@ -54,7 +64,8 @@ class IndexReplacer(MultiFunction):
             index_dimensions=index_dimensions,
         )
 
-    def multi_index(self, o):
+    @process.register(ufl.classes.MultiIndex)
+    def _(self, o: ufl.classes.MultiIndex) -> ufl.classes.MultiIndex:
         """Handle MultiIndex."""
         if not any(i in self.fimap for i in o):
             # Reuse if untouched
@@ -64,20 +75,26 @@ class IndexReplacer(MultiFunction):
         return MultiIndex(indices)
 
 
-class IndexRemover(MultiFunction):
+class IndexRemover(DAGTraverser):
     """Remove Indexed."""
 
     def __init__(self):
         """Initialise."""
-        MultiFunction.__init__(self)
+        super().__init__()
         self.rules = {}
-        # caches for reuse in the dispatched transformers
-        self.vcaches = defaultdict(dict)
-        self.rcaches = defaultdict(dict)
 
-    expr = MultiFunction.reuse_if_untouched
+    @functools.singledispatchmethod
+    def process(self, o: ufl.classes.Expr) -> ufl.classes.Expr:
+        """Process ``o``."""
+        return super().process(o)
 
-    def indexed(self, o, o1, i1):
+    @process.register(ufl.classes.Expr)
+    def _(self, o: ufl.classes.Expr) -> ufl.classes.Expr:
+        return self.reuse_if_untouched(o)
+
+    @process.register(ufl.classes.Indexed)
+    @DAGTraverser.postorder
+    def _(self, o: ufl.classes.Indexed, o1, i1) -> ufl.classes.Expr:
         """Simplify Indexed."""
         if isinstance(o1, ComponentTensor):
             # Simplify Indexed ComponentTensor
@@ -94,7 +111,7 @@ class IndexRemover(MultiFunction):
                 self.rules[rkey] = rule
 
             key = (IndexReplacer, *rkey)
-            return map_expr_dag(rule, o2, vcache=self.vcaches[key], rcache=self.rcaches[key])
+            return self(o2)
 
         elif o.ufl_operands[0] is o1:
             # Reuse if untouched
@@ -106,4 +123,4 @@ class IndexRemover(MultiFunction):
 def remove_component_tensors(o):
     """Remove component tensors."""
     rule = IndexRemover()
-    return map_integrand_dags(rule, o)
+    return rule(o)
