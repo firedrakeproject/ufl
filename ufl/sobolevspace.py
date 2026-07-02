@@ -87,6 +87,7 @@ class SobolevSpace:
             )
         return other.sobolev_space == self or self in other.sobolev_space.parents
 
+
     def __lt__(self, other):
         """In common with intrinsic Python sets, < indicates "is a proper subset of"."""
         return other in self.parents
@@ -159,6 +160,10 @@ class DirectionalSobolevSpace(SobolevSpace):
             return NotImplementedError(f"Don't know how to compare with {other.name}")
         else:
             return any(self._orders[i] > other._order for i in self._spatial_indices)
+
+    def __hash__(self):
+        """Hash."""
+        return hash(("DirectionalSobolevSpace", self.name, self._orders))
 
     def __str__(self):
         """Format as a string."""
