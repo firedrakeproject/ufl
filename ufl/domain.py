@@ -404,9 +404,13 @@ def extract_domains(
 
     """
     from ufl.algorithms.traversal import iter_expressions
+    from ufl.core.base_form_operator import BaseFormOperator
     from ufl.form import Form
     from ufl.integral import Integral
 
+    if isinstance(expr, BaseFormOperator) and expand_mesh_sequence:
+        # The argument slots carry domains that the operands cannot reach.
+        return tuple(expr.ufl_domains())
     if isinstance(expr, Form):
         if not expand_mesh_sequence:
             raise NotImplementedError("""
@@ -450,6 +454,12 @@ def extract_unique_domain(
         domain.
 
     """
+    from ufl.core.base_form_operator import BaseFormOperator
+
+    if isinstance(expr, BaseFormOperator):
+        # A base form operator has the domains of its argument slots as well,
+        # but it takes its value on the one its operands are defined over.
+        expr, = expr.ufl_operands
     domains = extract_domains(expr, expand_mesh_sequence=expand_mesh_sequence)
     if len(domains) == 1:
         return domains[0]
