@@ -9,6 +9,7 @@
 from functools import singledispatchmethod
 
 import ufl
+from ufl.algorithms.remove_component_tensors import remove_component_tensors
 from ufl.corealg.dag_traverser import DAGTraverser
 
 
@@ -173,14 +174,43 @@ class LinearCombinationExtractor(DAGTraverser):
         return base_res**exp_res
 
     # ---------------------------------------------------------
-    # 3. Forbidden Operations
+    # 3. Tensor Components (Vector-Scalar multiplication & Slicing)
     # ---------------------------------------------------------
-    @process.register(ufl.classes.Indexed)
-    @process.register(ufl.classes.ComponentTensor)
+    @process.register(ufl.classes.MultiIndex)
     def _(self, o, **kwargs):
-        raise NotImplementedError(
-            "Direct array assignment of indexed vector components is not supported."
-        )
+        return o
+
+    @process.register(ufl.classes.Indexed)
+    @DAGTraverser.postorder
+    def _(self, o, *operands, **kwargs):
+        base_res, indices_res = operands
+
+        if isinstance(base_res, list):
+            # Propagate any valid indexing (free, fixed, or slice) to the spatial field
+            return [(w, ufl.classes.Indexed(f, indices_res)) for w, f in base_res]
+
+        return ufl.classes.Indexed(base_res, indices_res)
+
+    @process.register(ufl.classes.ComponentTensor)
+    @DAGTraverser.postorder
+    def _(self, o, *operands, **kwargs):
+        expr_res, indices_res = operands
+
+        if isinstance(expr_res, list):
+            res = []
+            for w, f in expr_res:
+                # 1. Reconstruct the tensor operation around the spatial field
+                reconstructed_func = ufl.classes.ComponentTensor(f, indices_res)
+
+                # 2. Safely collapse implicit operations (like vector*scalar) back
+                #    down to the base function. Genuine slices (like T[0, :]) will
+                #    naturally be preserved here!
+                simplified_func = remove_component_tensors(reconstructed_func)
+
+                res.append((w, simplified_func))
+            return res
+
+        return ufl.classes.ComponentTensor(expr_res, indices_res)
 
 
 def extract_linear_combination(
