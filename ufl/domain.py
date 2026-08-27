@@ -459,7 +459,7 @@ def extract_unique_domain(
     if isinstance(expr, BaseFormOperator):
         # A base form operator has the domains of its argument slots as well,
         # but it takes its value on the one its operands are defined over.
-        expr, = expr.ufl_operands
+        (expr,) = expr.ufl_operands
     domains = extract_domains(expr, expand_mesh_sequence=expand_mesh_sequence)
     if len(domains) == 1:
         return domains[0]
