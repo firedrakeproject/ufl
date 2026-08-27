@@ -10,7 +10,6 @@
 
 import hashlib
 from collections import defaultdict
-from itertools import chain
 
 from ufl.argument import Argument, Coargument
 from ufl.coefficient import Cofunction
@@ -82,7 +81,6 @@ class Interpolate(BaseFormOperator):
             self, operand, function_space=function_space, argument_slots=argument_slots
         )
         self._cache = {}
-        self._domains = None
         self._signature = None
         self._subdomain_data = None
         self._terminal_numbering = None
@@ -93,26 +91,6 @@ class Interpolate(BaseFormOperator):
 
         super()._analyze_form_arguments()
         self._coefficients = tuple(extract_coefficients(self))
-
-    def _analyze_domains(self) -> None:
-        """Analyze domains in the interpolation and its argument slots."""
-        from ufl.domain import extract_domains, join_domains, sort_domains
-
-        def extract(expression):
-            if isinstance(expression, BaseForm):
-                return expression.ufl_domains()
-            return extract_domains(expression)
-
-        expressions = (*self.ufl_operands, *self.argument_slots())
-        self._domains = sort_domains(
-            join_domains(list(chain.from_iterable(extract(e) for e in expressions)))
-        )
-
-    def ufl_domains(self):
-        """Return all domains found in the interpolation."""
-        if self._domains is None:
-            self._analyze_domains()
-        return self._domains
 
     def subdomain_data(self):
         """Return cell-iteration subdomain data for the target domain."""
