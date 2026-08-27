@@ -873,6 +873,12 @@ class ZeroBaseForm(BaseForm):
     used for sake of simplifying base-form expressions.
     """
 
+    # Not an Expr, so this doesn't come from the ufl_type() decorator.
+    # ufl_operands are the placeholder Arguments, which are themselves
+    # real terminals, so generic traversal (e.g. traverse_unique_terminals)
+    # should descend into them rather than stop here.
+    _ufl_is_terminal_ = False
+
     __slots__ = (
         "_arguments",
         "_coefficients",
@@ -886,11 +892,16 @@ class ZeroBaseForm(BaseForm):
     def __init__(self, arguments):
         """Initialise."""
         BaseForm.__init__(self)
+        arguments = tuple(arguments)
         self._arguments = arguments
         self.ufl_operands = arguments
         self._hash = None
         self._domains = None
         self.form = None
+
+    def _ufl_expr_reconstruct_(self, *operands):
+        """Return a new object of the same type with new operands."""
+        return type(self)(operands)
 
     def _analyze_form_arguments(self):
         """Analyze form arguments."""
@@ -911,6 +922,10 @@ class ZeroBaseForm(BaseForm):
         if self._domains is None:
             self._analyze_domains()
         return self._domains
+
+    def empty(self):
+        """Returns whether the ZeroBaseForm has no components, which is always true."""
+        return True
 
     def __ne__(self, other):
         """Overwrite BaseForm.__neq__ which relies on `equals`."""

@@ -403,6 +403,7 @@ def extract_domains(
         `tuple` of domains.
 
     """
+    from ufl.algorithms.traversal import iter_expressions
     from ufl.form import Form
     from ufl.integral import Integral
 
@@ -419,9 +420,20 @@ def extract_domains(
         )
         return sort_domains(join_domains(domainlist, expand_mesh_sequence=expand_mesh_sequence))
     else:
+        # iter_expressions decomposes FormSum/Action/Adjoint (and nested
+        # Forms within them) down to plain Expr trees and leaf BaseForms
+        # (e.g. ZeroBaseForm, Matrix), each of which traverse_unique_terminals
+        # can walk directly. Fall back to the bare expr for anything it
+        # doesn't recognise (e.g. a FunctionSpace), matching the
+        # AttributeError that as_domain() relies on to catch that case.
+        try:
+            exprs = iter_expressions(expr)
+        except ValueError:
+            exprs = (expr,)
         domainlist = []
-        for t in traverse_unique_terminals(expr):
-            domainlist.extend(t.ufl_domains())
+        for e in exprs:
+            for t in traverse_unique_terminals(e):
+                domainlist.extend(t.ufl_domains())
         return sort_domains(join_domains(domainlist, expand_mesh_sequence=expand_mesh_sequence))
 
 
