@@ -15,7 +15,6 @@ from ufl.argument import Argument, Coargument
 from ufl.coefficient import Cofunction
 from ufl.constantvalue import as_ufl
 from ufl.core.base_form_operator import BaseFormOperator
-from ufl.core.operator import Operator
 from ufl.core.ufl_type import ufl_type
 from ufl.duals import is_dual
 from ufl.finiteelement import AbstractFiniteElement
@@ -162,11 +161,8 @@ class Interpolate(BaseFormOperator):
         return self._function_space.value_shape
 
     def __neg__(self):
-        """Negate the interpolation result."""
-        function_space = self._function_space
-        if function_space is None or not is_dual(function_space):
-            return Operator.__rmul__(self, -1)
-        return BaseForm.__neg__(self)
+        """Negate."""
+        return self._parent_type.__neg__(self)
 
     def _ufl_expr_reconstruct_(self, expr, v=None, **add_kwargs):
         """Return a new object of the same type with new operands."""

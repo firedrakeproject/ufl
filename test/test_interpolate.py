@@ -127,7 +127,12 @@ def test_shape_and_negation(domain_2d, V1, V2):
     for argument in (trial, test):
         interpolation = Interpolate(argument, target_space)
         assert interpolation.ufl_shape == target_space.value_shape
-        assert not isinstance(-interpolation, FormSum)
+        # Negation must agree with multiplication by -1, which negates a
+        # primal interpolation as an expression and a dual one as a form.
+        assert type(-interpolation) is type(-1 * interpolation)
+
+    assert not isinstance(-Interpolate(trial, target_space), FormSum)
+    assert isinstance(-Interpolate(test, target_space), FormSum)
 
     assert isinstance(-Interpolate(Coefficient(V1), V2), Product)
     assert isinstance(-Interpolate(Coefficient(V1), Cofunction(V2.dual())), Product)
