@@ -16,6 +16,7 @@ from ufl.classes import (
     ComponentTensor,
     Expr,
     FormArgument,
+    FunctionSpace,
     Interpolate,
     MultiIndex,
     NegativeRestricted,
@@ -28,6 +29,7 @@ from ufl.classes import (
 )
 from ufl.core.multiindex import indices
 from ufl.corealg.dag_traverser import DAGTraverser
+from ufl.domain import extract_unique_domain
 from ufl.form import BaseForm
 from ufl.tensors import as_tensor
 
@@ -288,3 +290,26 @@ def apply_coefficient_split(expr: Expr, coefficient_split: dict) -> Expr:
     if not coefficient_split:
         return expr
     return CoefficientSplitter(coefficient_split)(expr)
+
+
+def build_coefficient_split(coefficients_to_split) -> dict:
+    """Map each mixed coefficient in ``coefficients_to_split`` to its per-mesh components.
+
+    Args:
+        coefficients_to_split: Coefficients with a mixed element to split.
+
+    Returns:
+        `dict` that maps each coefficient to its components, suitable for
+        `CoefficientSplitter`/`apply_coefficient_split`.
+
+    """
+    coefficient_split = {}
+    for c in coefficients_to_split:
+        mesh = extract_unique_domain(c, expand_mesh_sequence=False)
+        assert mesh is not None
+        elem = c.ufl_element()
+        coefficient_split[c] = [
+            Coefficient(FunctionSpace(m, e))
+            for m, e in zip(mesh.iterable_like(elem), elem.sub_elements)
+        ]
+    return coefficient_split
