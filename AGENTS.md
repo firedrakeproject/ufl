@@ -1,89 +1,87 @@
 # UFL
 
 UFL (Unified Form Language) is a domain-specific language, embedded in Python, for declaring finite
-element variational forms and the function spaces they live on. It is part of the FEniCS Project and is
-the shared symbolic layer for FFCx, TSFC (used by Firedrake), and DOLFINx — none of which re-implement
-form algebra or differentiation; they all lower whatever `compute_form_data` produces.
+element variational forms and the function spaces they live on. It is part of the FEniCS Project, and
+it is the shared symbolic layer for FFCx, TSFC (used by Firedrake), and DOLFINx. None of those
+re-implement form algebra or differentiation; they all lower whatever `compute_form_data` produces.
 
 ## Project Architecture
 
-* **`Expr` (primal) and `BaseForm` (dual) are separate hierarchies.** `Expr` (`ufl/core/expr.py`):
-  scalars, tensors, `Coefficient`, `Argument`. `BaseForm` (`ufl/form.py`): `Form`, `FormSum`, `Matrix`,
-  `Cofunction`, `Coargument`, `Action`, `Adjoint`, `ZeroBaseForm`. Neither subclasses the other — code
-  dispatching on `Expr` (`isinstance`, or a `singledispatchmethod` registered on `Expr`) silently misses
-  every `BaseForm` node.
-* **`compute_form_data` is the one pipeline every form compiler uses** (`ufl/algorithms/compute_form_data.py`):
-  derivative expansion (`apply_derivatives`) → pullback/geometry lowering → default restrictions →
-  integral scaling, converging on a small node vocabulary so FFCx/TSFC don't need to understand all of
-  UFL.
-* **Differentiation is a tree of `DAGTraverser` subclasses, each a `singledispatchmethod` dispatch
-  table**, not one function: `GenericDerivativeRuleset` → `GateauxDerivativeRuleset` →
-  `BaseFormOperatorDerivativeRuleset`, plus `DerivativeRuleDispatcher` at the top
-  (`apply_derivatives.py`). Because `singledispatchmethod` does not inherit across subclasses
-  (bpo-36457), every subclass re-declares its own `process` and falls back to `super().process(o)` — a
-  parent's rule is reachable only through that explicit chain, never plain MRO.
-* **`map_integrands` is the generic recursive form transform** almost everything else (differentiation,
-  `replace`, splitting, action/adjoint construction) is built on. Its `Form` and `FormSum` branches are
-  *not* symmetric — see Anti-Patterns before assuming a fix to one applies to the other.
-* **`ZeroBaseForm` is the dual zero, and it carries shape**: which `Argument`s the now-vanished quantity
-  depended on. A bare `0` or `Form([])` does not carry this — the loss is invisible until something
-  downstream calls `.arguments()`.
+* **Two hierarchies:** `Expr` (`ufl/core/expr.py`) is the primal language of scalars, tensors,
+  coefficients, and arguments. `BaseForm` (`ufl/form.py`) is the dual language of forms, actions,
+  adjoints, and cofunctions. Neither subclasses the other, so code that dispatches on `Expr` misses
+  every dual node.
+* **One pipeline:** `compute_form_data` (`ufl/algorithms/compute_form_data.py`) is the lowering that
+  every form compiler calls: derivative expansion, pullback and geometry lowering, default
+  restrictions, then integral scaling. It converges on a small node vocabulary, so a form compiler
+  does not have to understand all of UFL.
+* **Dispatch tables, not functions:** each algorithm is a `DAGTraverser` subclass whose rules are
+  `singledispatchmethod` registrations. `singledispatchmethod` does not inherit across subclasses, so
+  every subclass re-declares `process` and chains to `super().process(o)`. A parent's rule is
+  reachable only through that chain, never through plain MRO.
+* **One generic transform:** `map_integrands` is the recursive form transform that differentiation,
+  `replace`, splitting, and action/adjoint construction are all built on.
+* **Zero carries shape:** `ZeroBaseForm` records the arguments that the vanished quantity depended on.
+  A bare `0` or an empty `Form([])` does not.
 
 ## Core Working Rules
 
-* **Fix the rule gap, not the test.** A crash tracing to a missing `process.register` case needs the
-  rule added on the right class, not a try/except at the call site.
-* **Extend an existing dispatch table** (`GenericDerivativeRuleset`, `map_integrands`, `extract_type`)
-  rather than special-casing one algorithm.
-* **Match the surrounding module's style**: Google-style `Args:`/`Returns:` docstrings, not numpydoc;
-  keep diffs minimal and local.
-* **The `Expr`/`BaseForm` split, and `Cofunction`/`Coargument`/`Interpolate`/`ZeroBaseForm`, are recent.**
-  Trained knowledge describing "a form is a sum of integrals over `Expr`s" predates them and will be
-  wrong about duals, `Action`, `Adjoint`. Read the actual class before assuming a method exists.
-* **Document the present, not the past.** Don't explain what a removed workaround used to do; say what
-  is true now and why. The test to apply: a reader who never saw the diff must not be able to tell
-  that anything was removed — see Anti-Patterns for the case that actually gets written.
+* **Fix The Rule, Not The Call Site:** Add the missing rule to the class that dispatches it. Do not
+  wrap the call site in a `try`/`except`.
+* **Extend An Existing Dispatch Table:** Register the new case on the traverser that already owns that
+  node type, instead of special-casing one algorithm.
+* **Dispatch On Type Cannot See Context:** A rule sees a node's type, never which recursive call
+  reached it. When one type needs different treatment in different subtrees, change which traverser
+  handles which subtree. Do not add more type registrations.
+* **Borrow A Design From Downstream:** UFL sits above several form compilers that already lower its
+  output. Before inventing a simplification or cancellation pass, grep the downstream compiler for a
+  pass that already names the pattern, and port it.
+* **Match The Nearest Structurally Similar Rule:** Mirror an existing rule for a type that plays the
+  same abstract role, even from an unrelated hierarchy. Copy its boilerplate too — the `super()`
+  fallback and the narrowed-signature suppression exist for concrete reasons.
+* **Do Not Trust Memorized API Shapes:** Read the current class definition from the installed source
+  before calling it. The dual types are recent, and trained knowledge predates them.
+* **Preserve Coding Style:** Match the naming and the patterns of the module you are editing. Keep
+  edits minimal and local to the requested change.
+* **Document The Present, Not The Past:** Do not describe a removed or rejected approach in a comment
+  or a docstring. Document only what the current code does.
 
 ## Coding Style And Conventions
 
-* **Type hints + Google-style docstrings** on new code, matching `ufl/algorithms/`.
-* **Plain English (ASD-STE100) in docstrings and comments.** Short sentences, one idea per sentence,
-  active voice, subject named up front instead of buried in a relative clause. Avoid the
-  clause-stacking, inverted phrasing typical of unedited AI-generated prose — see Anti-Patterns.
-* **`# type: ignore` on narrowed `process.register` handlers.** A handler typed
-  `(self, o: SomeType) -> BaseForm` fails `mypy` against the base `process(self, o: Expr) -> Expr` even
-  when the runtime dispatch is correct — match the existing `Matrix`/`Interpolate`/`ExternalOperator`
-  convention rather than widening the type hints.
-* **`ruff` line length is 100**, not flake8's 79 default — `pyproject.toml`'s `[tool.ruff]` is
-  authoritative.
+* **Type Hints And Docstrings:** Add type hints to new signatures. Write Google-style
+  `Args:`/`Returns:` docstrings, not numpydoc.
+* **Suppress `mypy` On Narrowed Handlers:** A `process.register` handler with a narrowed signature
+  fails `mypy` against the base `process`, even when the runtime dispatch is correct. Add
+  `# type: ignore`, as the surrounding handlers do. Do not widen the type hints.
+* **Line Length Is 100:** The `[tool.ruff]` table in `pyproject.toml` is authoritative.
 
 ## Testing Requirements
 
-* Every PR needs a test demonstrating the fix or feature.
-* **Test mathematical correctness, not just that it runs or looks structurally right.** Neither "no
-  exception was raised" nor `.signature()`/`==` agreement between two expressions proves the result is
-  correct — two independently-built expressions can match structurally while sharing the same wrong
-  derivative or simplification rule, and a simplification can produce something smaller without being
-  equivalent. Verify the actual mathematical claim: evaluate numerically (or `assemble` it in a
-  downstream consumer) and compare against a hand-computed or finite-difference value, or use a Taylor
-  test for anything claiming to be a derivative. Reserve structural/`.signature()` comparisons for
-  checking that two *constructions* agree, never as a stand-in for checking that either one is right.
-* Extend the existing file that already covers the feature (e.g. `test/test_duals.py` for
-  `BaseForm`/`Action`/`Adjoint`/`ZeroBaseForm`). Don't create a new file for a single fix.
-* Build elements/domains via `test/utils.py`'s `LagrangeElement`/`FiniteElement` helpers — no
-  form-compiler stack needed to exercise the symbolic layer.
+* Add a test that demonstrates the new feature or bug fix, in the existing test file for that module.
+  Do not create a new file for a single fix.
+* **Test mathematical correctness.** Neither "no exception was raised" nor agreement between two
+  expressions proves that a result is right. Two constructions can match structurally and still share
+  the same wrong rule.
+* Evaluate the result numerically, or assemble it in a downstream consumer, and compare against a
+  hand-computed or finite-difference value. Use a Taylor test for anything that claims to be a
+  derivative.
+* Reserve structural and `.signature()` comparisons for checking that two constructions agree. Never
+  use one as a stand-in for checking that either construction is correct.
+* Build elements and domains with the helpers in `test/utils.py`. The symbolic layer needs no
+  form-compiler stack.
 
 ## Pull Request Expectations
 
-* Only maintainers push to `origin` (`FEniCS/ufl`). Push to `fork`, then PR from `<fork-org>:<branch>`
-  to `FEniCS/ufl:main`:
+* All changes land through GitHub pull requests. Keep diffs focused.
+* Only maintainers push to `origin` (`FEniCS/ufl`). Push to your fork, then open the pull request from
+  there. A permission error pushing to `origin` is expected, not a misconfiguration.
   ```bash
-  git checkout -b <branch> main   # branch off an up-to-date origin/main
+  git checkout -b <branch> main
   git push -u fork <branch>
-  gh pr create --repo FEniCS/ufl --base main --head <fork-org>:<branch> --title ... --body ...
+  gh pr create --repo FEniCS/ufl --base main --head <fork-org>:<branch>
   ```
-  A permission error pushing to `origin` is expected, not a sign of misconfiguration.
-* Run all three `lint.yml` stages before pushing — `ruff check .` passing alone is not enough:
+* Before requesting review, run every stage of `lint.yml`. A passing `ruff check .` alone is not
+  enough:
   ```bash
   ruff check . && ruff format --check . && mypy -p ufl && mypy test/ && (cd test && mypy ../demo/)
   ```
@@ -92,103 +90,78 @@ form algebra or differentiation; they all lower whatever `compute_form_data` pro
 
 ### Environment Setup
 
-* UFL's `main`/`release` pair with FFCx/TSFC(Firedrake)/DOLFINx's `main`/`release`. When co-developing a
-  fix across both, `pip install -e .` UFL into the consumer's venv and check the consumer's own UFL
-  branch before assuming a failure is local to the package you're editing.
-* `test/utils.py` provides lightweight element/domain constructors (`LagrangeElement`, `FiniteElement`,
-  `MixedElement`) — reach for these first in a reproduction script.
+* **Paired branches:** UFL's `main` and `release` branches pair with the matching branches of FFCx,
+  TSFC/Firedrake, and DOLFINx. When you develop a fix across both, install UFL editable into the
+  consumer's virtual environment, and check the consumer's own UFL branch before you assume that a
+  failure is local.
+* **Reproduction scripts:** `test/utils.py` provides lightweight element and domain constructors.
+  Reach for these first.
 
 ### Testing
 
-* `pytest test/` runs the full suite in seconds, no MPI/parallel infrastructure.
-* Reproduce standalone first: a `FunctionSpace` on one or two elements plus the one call in question,
-  under twenty lines — the symbolic layer has no external dependencies to configure.
+* Run the full suite with `python -m pytest test/`. It takes seconds, and it needs no MPI or parallel
+  infrastructure.
+* Reproduce standalone first: a function space on one or two elements, plus the one call in question,
+  under twenty lines.
 
 ### Debugging
 
-* **Print a `BaseForm`/`Expr` before trusting `.arguments()` or `.empty()`.** A stray, un-expanded
-  `CoefficientDerivative` is immediately visible in `repr()`, whereas `.arguments()` alone can look
-  plausible while being wrong.
-* **Compare `.signature()`, not `==`, for independently-built expressions.** Two structurally identical
-  forms built via separate calls can carry differently-numbered dummy summation indices; `==` sees them
-  as different, `.signature()` does not.
-* **`AssertionError: Rule not set for <type>`** means no `process.register` handler for that type is
-  reachable from the class actually dispatching (check `type(traverser)` at the failure point, not the
-  traceback's outer frames) — either directly or via its `super().process(o)` fallback chain.
-* **A `DAGTraverser` traceback is mostly cache-miss noise.** `DAGTraverser.__call__` memoizes by raising
-  and catching `KeyError` on every call, so a real failure shows up as a long stack of "During handling
-  of the above exception, another exception occurred" — skip to the *last* exception, and read
-  `self = <ClassName ...>` at each frame to see exactly which dispatcher/ruleset was active, rather than
-  guessing from the top-level error alone.
-* **When a narrow code path disagrees with the full pipeline, run both on the same input and diff the
-  output structurally, not just pass/fail.** `apply_derivatives`/`expand_derivatives` on the identical
-  expression shows what the "correct" shape looks like (e.g. `Indexed(Grad(w), ...)` vs. an
-  un-normalized `Grad(Indexed(w, ...))`) — this turns "why does this crash" into "which node differs and
-  why."
+* **Print the expression before you trust its accessors.** `repr()` shows an un-expanded node that
+  `.arguments()` alone can hide.
+* **Compare `.signature()`, not `==`.** Two independently built forms carry differently numbered dummy
+  indices, which `==` reports as a difference and `.signature()` does not.
+* **`Rule not set for <type>`** means that no handler for that type is reachable from the class that
+  actually dispatches. Read `type(traverser)` at the failure point, not the traceback's outer frames.
+* **Read a `DAGTraverser` traceback from the bottom.** The traverser memoizes by catching `KeyError`,
+  so every call adds another "During handling of the above exception". Skip to the last exception, and
+  read `self = <ClassName ...>` at each frame to see which ruleset was active.
+* **Diff the output, not the pass or fail.** When a narrow code path disagrees with the full pipeline,
+  run both on the same input and compare the two expressions structurally.
 
-## Pattern Matching For Planning And Debugging
+## Grammar & Style Rules for Technical Prose
 
-* **Borrow a design from one layer down the stack before inventing one.** UFL sits below nothing and
-  above several form compilers (FFCx, TSFC/GEM) that lower whatever `compute_form_data` produces. A
-  simplification problem at the UFL layer has often already been solved, in a structurally analogous
-  form, one layer further down — GEM already cancels Kronecker-delta-producing index contractions in
-  its own optimization passes, and `cancel_jacobian_products.py`'s `JacobianCanceller`/
-  `IdentityEliminator` pair is a deliberate port of that GEM pass, run earlier, before pullback lowering
-  destroys the structure GEM would otherwise have to rediscover. Grep the downstream compiler for a pass
-  that already names the pattern before designing a new algorithm; porting a design that has already
-  shipped and been tested is strictly better than re-deriving one, and its tests hand you the edge cases
-  for free. Treat this as good practice, not a shortcut to apologize for.
-* **Inside UFL, match new rules to the nearest *structurally* similar existing one, not the nearest
-  class in the hierarchy.** A dispatch rule for a new type should mirror an existing rule for a type
-  playing the same abstract role (terminal-like dual object, zero-producing simplification,
-  index-contraction rewrite), even in an unrelated class hierarchy — e.g. `Matrix`/`Cofunction`/
-  `Coargument` are all "dual objects independent of a plain `Coefficient`." Copy the boilerplate too
-  (`super().process(o)` fallback redeclaration, `# type: ignore` on a narrowed signature); it exists for
-  concrete reasons (Python class-body name resolution, `mypy` callable variance), and skipping it
-  reproduces failures someone already solved.
-* **Classify which structural category a fix belongs to before copying it to a sibling code path.** Two
-  branches that look parallel are not automatically the same problem — one may only ever *add*
-  information, where its sibling *replaces* it (the `map_integrands` `Form`-vs-`FormSum` case in
-  Anti-Patterns). State in one sentence which category applies before generalizing; a full local
-  test-suite pass is not proof the generalization is safe, and it may take a downstream consumer's tests
-  to reveal the mismatch.
-* **A fix that trades one failing test for another is a context signal, not a reason to add more special
-  cases.** Narrowing a dispatcher to "only handle X, leave everything else untouched" assumes node
-  *type* is enough to decide — but the same node type can need different treatment depending on which
-  recursive call reached it (inside the region being narrowed for, vs. outside it), and a type-keyed
-  registry alone cannot express that. When a targeted fix (e.g. registering one more type) fixes the
-  case you're chasing but breaks an unrelated, previously-passing test, look for a way to change *which
-  traverser handles which subtree* instead of adding more type registrations. This is what fixing
-  `CoefficientDerivativeRuleDispatcher` required: `Grad` needed full normalization when reached from
-  *inside* a `CoefficientDerivative`'s own content, but no treatment at all when reached from *outside*
-  one — the fix was recursing into that content with a separate, full `DerivativeRuleDispatcher`
-  instance, not registering `Grad` on the narrowed dispatcher itself.
-* **When a generalization regresses something only a downstream consumer's tests catch, isolate with a
-  one-delta script before re-reading the whole diff.** Build the smallest example that drives exactly the
-  two competing code paths (e.g. a node's pre-transform vs. post-transform arguments, or the same
-  expression through both the narrow and the full pipeline) through the algorithm directly, and `repr()`
-  the result at each step — this localizes which rule produced the wrong answer far faster than
-  reasoning about the full pipeline in the abstract.
+Write as an expert technical writer addressing a peer (a mathematician or software engineer).
+Use ASD-STE100. Write clear, complete sentences rather than grammatically convoluted shortcuts.
+All comments, docstrings, and documentation must adhere to the following standards:
+
+* **Active Verbs Over Noun-Stacking:** Rephrase to avoid stacking words that double as nouns, verbs, or adjectives.
+   - **WRONG:** `# Argument replacement transform post-image shape mismatch.`
+   - **RIGHT:** `# The transform replaced the Arguments, so the shapes no longer match.`
+
+* **Explicit Relative Pronouns:** Never drop pronouns like `that`, `which`, or `where` to condense sentences.
+   - **WRONG:** `# Returns the integrals a mixed-space splitter produced.`
+   - **RIGHT:** `# Returns the integrals that a mixed-space splitter produced.`
+
+* **Subject-Verb Alignment:** Ensure that introductory prepositional phrases modify the actual grammatical
+subject of the main clause. Avoid dangling modifiers.
+   - **WRONG:** `# Using a narrowed dispatcher, the gradients stay un-normalized.`
+   - **RIGHT:** `# A narrowed dispatcher leaves the gradients un-normalized.`
+
+* **Describe The Code That Is There:** Never document a removed approach, and never argue against a
+branch the code does not take. "Used to", "previously", "no longer", and "instead of" give this away.
+   - **WRONG:** `# This no longer returns the pre-image Arguments, which lost the numbering.`
+   - **RIGHT:** `# The post-image Arguments, recorded when the transform rebuilt the form.`
 
 ## Anti-Patterns
 
-### Using A Bare `0` Or `Form([])` For A Form That Turned Out To Be Zero
+Each pattern below is a WRONG/RIGHT pair to read.
 
-WRONG — Once an algorithm establishes that a form is identically zero, returning a bare Python `0` (or
-an empty, argument-less `Form([])`) throws away which function spaces the zero result lived on:
+### Returning A Bare Zero For A Form That Cancelled
+
+WRONG — Returning a bare Python `0`, or an empty `Form([])`, throws away the function spaces that the
+zero result lived on. The loss stays invisible until something downstream calls `.arguments()`:
 
 ```python
 # Anti-pattern: the caller cannot recover which Arguments this was supposed to have
 def compute_something(form):
-    result = ...  # turns out every integral cancelled
+    result = ...  # every integral cancelled
     if not result:
         return Form([])
     return result
 ```
 
-RIGHT — Construct a `ZeroBaseForm` carrying the arguments the (now-vanished) result would have had.
-Downstream code that calls `.arguments()`, assembles into a specific block, or feeds the result into
-further form algebra then keeps working exactly as it would for a nonzero result:
+RIGHT — Build a `ZeroBaseForm` that carries the arguments the vanished result would have had.
+Downstream code then keeps working exactly as it would for a nonzero result:
 
 ```python
 def compute_something(form):
@@ -198,139 +171,24 @@ def compute_something(form):
     return result
 ```
 
-This is precisely the shape of the bug that produced `AssertionError: Rule not set for ZeroBaseForm` in
-`expand_derivatives`: a differentiation rule for `Matrix`/`Cofunction`/`Coargument` already built a
-correctly-shaped `ZeroBaseForm`, but differentiating *that* `ZeroBaseForm` a second time (e.g. a Hessian)
-hit a rule set with no registered handler for `ZeroBaseForm` itself — the fix was to add the missing
-sibling rule, not to special-case the crash.
+### Assuming That A Transform Preserves Its Arguments
 
-### Assuming A Transform's Post-Image Arguments Equal Its Pre-Image Arguments
-
-WRONG — When a fully-cancelled `Form`'s zero result needs its arguments preserved, reaching for the
-*original*, pre-transform form's `.arguments()` looks like the obvious fix, and is correct for
-transforms that only ever *add* information (differentiation appends one new direction `Argument` on
-top of the existing ones — the original arguments are still exactly right). It is wrong for transforms
-that *replace* arguments, such as splitting a mixed-space form into a sub-block: the pre-transform form's
-arguments are on the original, un-split function space, not the collapsed subspace the caller actually
-wants.
+WRONG — Reusing the pre-transform form's `.arguments()` is correct only for a transform that *adds*
+arguments, such as differentiation. It is wrong for a transform that *replaces* them, such as a
+mixed-space block splitter, whose arguments live on the collapsed subspace:
 
 ```python
-# Anti-pattern: correct for a pure differentiation pass, silently wrong for
-# anything (like a mixed-space block splitter) that replaces Arguments
-# rather than only adding new ones
+# Anti-pattern: silently wrong for any transform that replaces Arguments
 if not nonzero_integrals:
     return ZeroBaseForm(form.arguments())  # `form` is the PRE-transform Form
 ```
 
-RIGHT — A generic utility like `map_integrands` cannot know, for an arbitrary caller-supplied
-transform, whether that transform only adds arguments or also replaces them; it should not guess. Let
-the specific caller — which does know its own transform's semantics — reconstruct the correct arguments
-itself, e.g. by re-applying its own per-`Argument` substitution rule to `form.arguments()`:
+RIGHT — A generic utility cannot know whether a caller-supplied transform adds or replaces arguments,
+and it must not guess. The caller knows its own semantics, so let it rebuild the arguments by
+re-applying its own substitution rule:
 
 ```python
-# Correct: the caller (e.g. a mixed-space block splitter) knows how it
-# maps an Argument onto the collapsed subspace, and rebuilds accordingly
 f = map_integrand_dags(splitter, form)
 if expand_derivatives(f).empty():
     f = ZeroBaseForm(tuple(map(splitter._subspace_argument, form.arguments())))
 ```
-
-The `FormSum` branch of `map_integrands` gets to take the shortcut the `Form` branch cannot: when every
-component of a `FormSum` vanishes, each component was *already* passed through the caller's transform
-(`map_integrands` recurses into `FormSum.components()` before checking for cancellation), so
-`mapped_components[0].arguments()` is the correctly-transformed shape, not a pre-image guess. Do not
-generalize that shortcut to the plain `Form` branch, where no such already-mapped object exists.
-
-### Narrowing A Dispatcher's Node-Type Coverage Without Narrowing Its Point Of Use
-
-WRONG — Registering the abstract `Derivative` type to leave nodes untouched correctly protects foreign,
-unknown subtypes (e.g. a third-party `TimeDerivative`) from a dispatcher that only knows how to expand
-`CoefficientDerivative`. But `Grad`, `ReferenceGrad`, and friends are *also* `Derivative` subtypes with
-no more specific registration here — so they get left untouched too, including *inside* a
-`CoefficientDerivative`'s own content, where `GateauxDerivativeRuleset` requires a spatial `Grad`
-already pushed down to a terminal:
-
-```python
-# Anti-pattern: protects foreign Derivative subtypes, but also leaves
-# Grad/ReferenceGrad/etc. un-normalized wherever they occur, including
-# inside a CoefficientDerivative that is about to be Gateaux-differentiated
-@process.register(Derivative)
-def _(self, o):
-    return self.reuse_if_untouched(o)
-
-@process.register(CoefficientDerivative)
-@DAGTraverser.postorder_only_children([0])
-def _(self, o, f):
-    # `f` was recursed into via `self`, so any Grad inside it already
-    # went through the reuse_if_untouched rule above, un-normalized
-    ...
-```
-
-RIGHT — Recurse into the `CoefficientDerivative`'s own content with a separate, full traverser, so
-content about to be differentiated is normalized exactly as the full pipeline would, while node types
-encountered *outside* any `CoefficientDerivative` still get the narrow, foreign-safe treatment:
-
-```python
-@process.register(CoefficientDerivative)
-def _(self, o):
-    expr, w, v, cd = o.ufl_operands
-    full_dispatcher = self._dag_traverser_cache.setdefault(
-        (DerivativeRuleDispatcher,), DerivativeRuleDispatcher()
-    )
-    f = full_dispatcher(expr)
-    ...
-```
-
-This is the shape of the bug behind `GateauxDerivativeRuleset.Grad` raising `"Expecting gradient of a
-FormArgument"` on `Grad(Indexed(Coefficient, ...))`: `replace()`'s narrowed `expand_coefficient_derivatives`
-needs `Grad` fully normalized *inside* a `CoefficientDerivative`'s content, but left alone *outside* one
-— a single `Derivative → reuse_if_untouched` registration cannot express both, since dispatch only sees
-a node's type, never which recursive call reached it.
-
-### Clause-Stacked Docstrings And Comments
-
-WRONG — the subject hides inside a relative clause the reader must unwind before finding the verb:
-
-```python
-def split_by_argument(form, number):
-    """Give the integrals a mixed-space splitter produced their collapsed subspace."""
-```
-
-RIGHT — subject named up front, one short sentence, active voice:
-
-```python
-def split_by_argument(form, number):
-    """Collapse the integrals that a mixed-space splitter produced onto their subspace."""
-```
-
-### Documenting Code That Is Not There
-
-A reader has only the file in front of them. A comment can describe a removed approach. It can also
-argue against a branch the code does not take. Either one sends the reader looking for something
-that is not there.
-The obvious form — "this used to call `expand_derivatives`" — is rarely what gets written. The form
-that gets written is an argument against a branch that was just deleted, which reads as present
-tense:
-
-WRONG — the first sentence describes deleted code, and the second argues with an absent branch:
-
-```python
-def arguments(self):
-    # This no longer returns the pre-image Arguments, which was wrong for a
-    # splitter that replaces them. A check for ZeroBaseForm here would lose
-    # the Argument numbering.
-    return self._arguments
-```
-
-RIGHT — say what the present code does, and state the condition it relies on:
-
-```python
-def arguments(self):
-    # The post-image Arguments, recorded when the transform rebuilt the form.
-    # A splitter that replaces Arguments sets these itself.
-    return self._arguments
-```
-
-Some words give this away on sight: "used to", "previously", "no longer", "instead of", "we removed",
-"this replaces". Watch equally for "would" when its subject is code that does not exist. An argument
-against a branch that nobody can see is still a description of the past.
