@@ -11,7 +11,7 @@ from __future__ import annotations
 from functools import singledispatchmethod
 
 from ufl.algorithms.map_integrands import map_integrands
-from ufl.classes import Expr, FormArgument, Interpolate, ReferenceValue
+from ufl.classes import Argument, Coefficient, Expr, FormArgument, Interpolate, ReferenceValue
 from ufl.corealg.dag_traverser import DAGTraverser
 from ufl.domain import extract_unique_domain
 from ufl.form import BaseForm
@@ -39,7 +39,7 @@ class FunctionPullbackApplier(DAGTraverser):
         return self.reuse_if_untouched(o)
 
     @process.register(FormArgument)
-    def _(self, o: FormArgument) -> Expr:
+    def _(self, o: Argument | Coefficient) -> Expr:
         """Represent 0-derivatives of a form argument on the reference element."""
         r = ReferenceValue(o)
         space = o.ufl_function_space()
