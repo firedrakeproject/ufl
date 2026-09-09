@@ -6,10 +6,17 @@
 #
 # SPDX-License-Identifier:    LGPL-3.0-or-later
 
-from ufl.algorithms.map_integrands import map_integrand_dags
-from ufl.classes import Interpolate, ReferenceValue
+from __future__ import annotations
+
+from functools import singledispatchmethod
+
+from ufl.algorithms.map_integrands import map_integrand_dags, map_integrands
+from ufl.classes import Expr, Interpolate, ReferenceValue
+from ufl.corealg.dag_traverser import DAGTraverser
 from ufl.corealg.multifunction import MultiFunction, memoized_handler
-from ufl.domain import extract_unique_domain
+from ufl.domain import AbstractDomain, extract_unique_domain
+from ufl.finiteelement import AbstractFiniteElement
+from ufl.form import BaseForm
 
 
 class FunctionPullbackApplier(MultiFunction):
@@ -50,6 +57,103 @@ class FunctionPullbackApplier(MultiFunction):
         return f
 
 
+class InversePullbackApplier(DAGTraverser):
+    """An inverse pull back applier.
+
+    Args:
+        element: The element whose pull back is inverted.
+        domain: The domain to use if an expression carries none.
+        compress: If True, ``result_cache`` will be used.
+        visited_cache: cache of intermediate results; expr -> r = self.process(expr, ...).
+        result_cache: cache of result objects for memory reuse, r -> r.
+
+    """
+
+    def __init__(
+        self,
+        element: AbstractFiniteElement,
+        domain: AbstractDomain | None = None,
+        compress: bool | None = True,
+        visited_cache: dict[tuple, Expr | BaseForm] | None = None,
+        result_cache: dict[Expr | BaseForm, Expr | BaseForm] | None = None,
+    ) -> None:
+        """Initialise."""
+        super().__init__(compress=compress, visited_cache=visited_cache, result_cache=result_cache)
+        self._element = element
+        self._domain = domain
+
+    @singledispatchmethod
+    def process(self, o: Expr) -> Expr:
+        """Map an expression onto the reference cell of ``self._element``.
+
+        Args:
+            o: An expression on a physical cell, whose shape must be the
+                physical value shape of ``self._element``.
+
+        Returns:
+            The expression on the reference cell, with shape
+            ``self._element.reference_value_shape``.
+
+        """
+        return super().process(o)
+
+    @process.register(Expr)
+    def _(self, o: Expr) -> Expr:
+        """Handle Expr."""
+        element = self._element
+        mesh = extract_unique_domain(o) or self._domain
+        if self._domain is not None and mesh != self._domain:
+            raise NotImplementedError("Multiple domains not supported")
+        physical_value_shape = element.pullback.physical_value_shape(element, mesh)
+        if o.ufl_shape != physical_value_shape:
+            raise ValueError(
+                f"Expecting physical expression with shape '{physical_value_shape}', "
+                f"got '{o.ufl_shape}'"
+            )
+        r = element.pullback.apply_inverse(o, mesh)
+        if r.ufl_shape != element.reference_value_shape:
+            raise ValueError(
+                f"Expecting reference expression with shape "
+                f"'{element.reference_value_shape}', got '{r.ufl_shape}'"
+            )
+        return r
+
+
+class InterpolatePullbackApplier(DAGTraverser):
+    """A pull back applier for interpolation."""
+
+    @singledispatchmethod
+    def process(self, o: Expr | BaseForm) -> Expr | BaseForm:
+        """Process ``o``.
+
+        Args:
+            o: `Expr` or `BaseForm` to be processed.
+
+        Returns:
+            Processed `Expr` or `BaseForm`.
+
+        """
+        return super().process(o)
+
+    @process.register(Expr)
+    @process.register(BaseForm)
+    def _(self, o: Expr | BaseForm) -> Expr | BaseForm:
+        """Handle Expr and BaseForm."""
+        return self.reuse_if_untouched(o)
+
+    @process.register(Interpolate)
+    @DAGTraverser.postorder
+    def _(self, o: Interpolate, operand: Expr) -> Expr:
+        """Evaluate an interpolation on the reference cell of its target element."""
+        dual_arg, _ = o.argument_slots()
+        element = o.ufl_element()
+        domain = extract_unique_domain(operand) or dual_arg.ufl_function_space().ufl_domain()
+        # Build the node here rather than reconstructing o: the mapped operand
+        # no longer has the physical value shape that a subclass may check.
+        r = Interpolate(apply_inverse_pullback(operand, element, domain), dual_arg)
+        return element.pullback.apply(ReferenceValue(r), domain)
+
+
 def apply_inverse_pullback(expr, element, domain=None):
     """Map a physical expression onto the reference cell of an element.
 
@@ -63,42 +167,7 @@ def apply_inverse_pullback(expr, element, domain=None):
         The expression on the reference cell, with shape
         ``element.reference_value_shape``
     """
-    mesh = extract_unique_domain(expr) or domain
-    if domain is not None and mesh != domain:
-        raise NotImplementedError("Multiple domains not supported")
-    physical_value_shape = element.pullback.physical_value_shape(element, mesh)
-    if expr.ufl_shape != physical_value_shape:
-        raise ValueError(
-            f"Expecting physical expression with shape '{physical_value_shape}', "
-            f"got '{expr.ufl_shape}'"
-        )
-    r = element.pullback.apply_inverse(expr, mesh)
-    if r.ufl_shape != element.reference_value_shape:
-        raise ValueError(
-            f"Expecting reference expression with shape "
-            f"'{element.reference_value_shape}', got '{r.ufl_shape}'"
-        )
-    return r
-
-
-class InterpolatePullbackApplier(MultiFunction):
-    """A pull back applier for interpolation."""
-
-    expr = MultiFunction.reuse_if_untouched
-
-    def terminal(self, t):
-        """Apply to a terminal."""
-        return t
-
-    def interpolate(self, o, operand):
-        """Evaluate an interpolation on the reference cell of its target element."""
-        dual_arg, _ = o.argument_slots()
-        element = o.ufl_element()
-        domain = extract_unique_domain(operand) or dual_arg.ufl_function_space().ufl_domain()
-        # Build the node here rather than reconstructing o: the mapped operand
-        # no longer has the physical value shape that a subclass may check.
-        r = Interpolate(apply_inverse_pullback(operand, element, domain), dual_arg)
-        return element.pullback.apply(ReferenceValue(r), domain)
+    return InversePullbackApplier(element, domain=domain)(expr)
 
 
 def apply_interpolate_pullbacks(expr):
@@ -114,7 +183,7 @@ def apply_interpolate_pullbacks(expr):
     Returns:
         The expression with its interpolations on their reference cells
     """
-    return map_integrand_dags(InterpolatePullbackApplier(), expr)
+    return map_integrands(InterpolatePullbackApplier(), expr)
 
 
 def apply_function_pullbacks(expr):
