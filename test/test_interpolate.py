@@ -14,6 +14,7 @@ from ufl import (
     Cofunction,
     FunctionSpace,
     Mesh,
+    SpatialCoordinate,
     TestFunction,
     TestFunctions,
     TrialFunction,
@@ -150,6 +151,20 @@ def test_form_compiler_signature(V1, V2, V3):
     cofunction_sum = Cofunction(V1.dual()) + Cofunction(V1.dual())
     adjoint_interpolation = Interpolate(TestFunction(V2), cofunction_sum)
     assert isinstance(adjoint_interpolation.signature(), str)
+
+
+def test_form_compiler_signature_depends_on_interpolation_target(domain_2d):
+    """Different target elements must not share an interpolation signature."""
+    curl_element = FiniteElement("N1curl", triangle, 1, (2,), identity_pullback, H1)
+    lagrange_element = FiniteElement("Lagrange", triangle, 1, (2,), identity_pullback, H1)
+    curl_space = FunctionSpace(domain_2d, curl_element)
+    lagrange_space = FunctionSpace(domain_2d, lagrange_element)
+    x = SpatialCoordinate(domain_2d)
+
+    curl_form = Interpolate(x, curl_space)[0] * dx
+    lagrange_form = Interpolate(x, lagrange_space)[0] * dx
+
+    assert curl_form.signature() != lagrange_form.signature()
 
 
 def test_reference_value_derivative(V1, V2):

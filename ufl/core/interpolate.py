@@ -147,7 +147,10 @@ class Interpolate(BaseFormOperator):
                     )
                 return compute_expression_signature(slot, renumbering)
 
-            signatures = tuple(signature(slot) for slot in self.argument_slots())
+            signatures = (
+                repr(self.ufl_element()),
+                *(signature(slot) for slot in self.argument_slots()),
+            )
             self._signature = hashlib.sha512(str(signatures).encode("utf-8")).hexdigest()
         return self._signature
 
