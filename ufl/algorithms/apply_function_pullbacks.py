@@ -10,33 +10,37 @@ from __future__ import annotations
 
 from functools import singledispatchmethod
 
-from ufl.algorithms.map_integrands import map_integrand_dags, map_integrands
-from ufl.classes import Expr, Interpolate, ReferenceValue
+from ufl.algorithms.map_integrands import map_integrands
+from ufl.classes import Expr, FormArgument, Interpolate, ReferenceValue
 from ufl.corealg.dag_traverser import DAGTraverser
-from ufl.corealg.multifunction import MultiFunction, memoized_handler
-from ufl.domain import AbstractDomain, extract_unique_domain
-from ufl.finiteelement import AbstractFiniteElement
+from ufl.domain import extract_unique_domain
 from ufl.form import BaseForm
 
 
-class FunctionPullbackApplier(MultiFunction):
+class FunctionPullbackApplier(DAGTraverser):
     """A pull back applier."""
 
-    def __init__(self):
-        """Initalise."""
-        MultiFunction.__init__(self)
+    @singledispatchmethod
+    def process(self, o: Expr) -> Expr:
+        """Process ``o``.
 
-    expr = MultiFunction.reuse_if_untouched
+        Args:
+            o: `Expr` to be processed.
 
-    def terminal(self, t):
-        """Apply to a terminal."""
-        return t
+        Returns:
+            Processed `Expr`.
 
-    @memoized_handler
-    def form_argument(self, o):
-        """Apply to a form_argument."""
-        # Represent 0-derivatives of form arguments on reference
-        # element
+        """
+        return super().process(o)
+
+    @process.register(Expr)
+    def _(self, o: Expr) -> Expr:
+        """Handle Expr."""
+        return self.reuse_if_untouched(o)
+
+    @process.register(FormArgument)
+    def _(self, o: FormArgument) -> Expr:
+        """Represent 0-derivatives of a form argument on the reference element."""
         r = ReferenceValue(o)
         space = o.ufl_function_space()
         element = o.ufl_element()
@@ -55,68 +59,6 @@ class FunctionPullbackApplier(MultiFunction):
 
         assert f.ufl_shape == o.ufl_shape
         return f
-
-
-class InversePullbackApplier(DAGTraverser):
-    """An inverse pull back applier.
-
-    Args:
-        element: The element whose pull back is inverted.
-        domain: The domain to use if an expression carries none.
-        compress: If True, ``result_cache`` will be used.
-        visited_cache: cache of intermediate results; expr -> r = self.process(expr, ...).
-        result_cache: cache of result objects for memory reuse, r -> r.
-
-    """
-
-    def __init__(
-        self,
-        element: AbstractFiniteElement,
-        domain: AbstractDomain | None = None,
-        compress: bool | None = True,
-        visited_cache: dict[tuple, Expr | BaseForm] | None = None,
-        result_cache: dict[Expr | BaseForm, Expr | BaseForm] | None = None,
-    ) -> None:
-        """Initialise."""
-        super().__init__(compress=compress, visited_cache=visited_cache, result_cache=result_cache)
-        self._element = element
-        self._domain = domain
-
-    @singledispatchmethod
-    def process(self, o: Expr) -> Expr:
-        """Map an expression onto the reference cell of ``self._element``.
-
-        Args:
-            o: An expression on a physical cell, whose shape must be the
-                physical value shape of ``self._element``.
-
-        Returns:
-            The expression on the reference cell, with shape
-            ``self._element.reference_value_shape``.
-
-        """
-        return super().process(o)
-
-    @process.register(Expr)
-    def _(self, o: Expr) -> Expr:
-        """Handle Expr."""
-        element = self._element
-        mesh = extract_unique_domain(o) or self._domain
-        if self._domain is not None and mesh != self._domain:
-            raise NotImplementedError("Multiple domains not supported")
-        physical_value_shape = element.pullback.physical_value_shape(element, mesh)
-        if o.ufl_shape != physical_value_shape:
-            raise ValueError(
-                f"Expecting physical expression with shape '{physical_value_shape}', "
-                f"got '{o.ufl_shape}'"
-            )
-        r = element.pullback.apply_inverse(o, mesh)
-        if r.ufl_shape != element.reference_value_shape:
-            raise ValueError(
-                f"Expecting reference expression with shape "
-                f"'{element.reference_value_shape}', got '{r.ufl_shape}'"
-            )
-        return r
 
 
 class InterpolatePullbackApplier(DAGTraverser):
@@ -157,6 +99,10 @@ class InterpolatePullbackApplier(DAGTraverser):
 def apply_inverse_pullback(expr, element, domain=None):
     """Map a physical expression onto the reference cell of an element.
 
+    This is a rule on a single node, not a DAG traversal: the expression is
+    mapped as a whole, and an interpolation inside it is left alone for
+    `apply_interpolate_pullbacks` to lower.
+
     Args:
         expr: An expression on a physical cell, whose shape must be the
             physical value shape of the element
@@ -167,7 +113,22 @@ def apply_inverse_pullback(expr, element, domain=None):
         The expression on the reference cell, with shape
         ``element.reference_value_shape``
     """
-    return InversePullbackApplier(element, domain=domain)(expr)
+    mesh = extract_unique_domain(expr) or domain
+    if domain is not None and mesh != domain:
+        raise NotImplementedError("Multiple domains not supported")
+    physical_value_shape = element.pullback.physical_value_shape(element, mesh)
+    if expr.ufl_shape != physical_value_shape:
+        raise ValueError(
+            f"Expecting physical expression with shape '{physical_value_shape}', "
+            f"got '{expr.ufl_shape}'"
+        )
+    r = element.pullback.apply_inverse(expr, mesh)
+    if r.ufl_shape != element.reference_value_shape:
+        raise ValueError(
+            f"Expecting reference expression with shape "
+            f"'{element.reference_value_shape}', got '{r.ufl_shape}'"
+        )
+    return r
 
 
 def apply_interpolate_pullbacks(expr):
@@ -195,4 +156,4 @@ def apply_function_pullbacks(expr):
     Args:
         expr: An Expression
     """
-    return map_integrand_dags(FunctionPullbackApplier(), expr)
+    return map_integrands(FunctionPullbackApplier(), expr)
