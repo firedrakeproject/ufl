@@ -164,12 +164,34 @@ class Interpolate(BaseFormOperator):
         """Return the value shape in the interpolation target space."""
         return self._function_space.value_shape
 
-    def __neg__(self):
-        """Negate the interpolation result."""
+    def _value_parent_type(self):
+        """Return the type whose arithmetic matches the interpolation's value.
+
+        An interpolation takes its value in the target space, which is the
+        space ``ufl_shape`` reports. Scaling and negation follow that space, so
+        that an interpolation of a test function stays an expression and can be
+        combined with one inside an integrand. ``_parent_type`` instead follows
+        ``ufl_function_space()``, the adjoint's source dual, and still drives
+        addition, where a sum of adjoint interpolations must stay a form.
+        """
         function_space = self._function_space
         if function_space is None or not is_dual(function_space):
+            return Operator
+        return BaseForm
+
+    def __neg__(self):
+        """Negate the interpolation result."""
+        if self._value_parent_type() is Operator:
             return Operator.__rmul__(self, -1)
         return BaseForm.__neg__(self)
+
+    def __mul__(self, other):
+        """Multiply, agreeing with negation on which space the value is in."""
+        return self._value_parent_type().__mul__(self, other)
+
+    def __rmul__(self, other):
+        """Multiply, agreeing with negation on which space the value is in."""
+        return self._value_parent_type().__rmul__(self, other)
 
     def _ufl_expr_reconstruct_(self, expr, v=None, **add_kwargs):
         """Return a new object of the same type with new operands."""
