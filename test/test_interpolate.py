@@ -134,6 +134,42 @@ def test_shape_and_negation(domain_2d, V1, V2):
     assert isinstance(-Interpolate(Coefficient(V1), Cofunction(V2.dual())), Product)
 
 
+def test_scaling_agrees_with_negation(domain_2d, V1, V2):
+    """Scaling an interpolation must agree with negating it.
+
+    Both follow the target space, the one that ``ufl_shape`` reports, so that an
+    interpolation of a test function stays an expression. Firedrake's fml is
+    what notices a disagreement: it builds ``form - label(form)`` and compares
+    the result against ``-form``.
+    """
+    scalar_element = V1.ufl_element()
+    vector_element = FiniteElement("CG", triangle, 1, (2,), identity_pullback, H1)
+    mixed_space = FunctionSpace(domain_2d, MixedElement([scalar_element, vector_element]))
+    target_space = FunctionSpace(domain_2d, vector_element)
+    _, trial = TrialFunctions(mixed_space)
+    _, test = TestFunctions(mixed_space)
+
+    for argument in (trial, test):
+        interpolation = Interpolate(argument, target_space)
+        assert type(-interpolation) is type(-1 * interpolation)
+        assert type(-interpolation) is type(interpolation * -1)
+        assert not isinstance(2 * interpolation, FormSum)
+        # Scaling preserves the value shape, which a FormSum would not have.
+        assert (2 * interpolation).ufl_shape == target_space.value_shape
+
+    for interpolation in (
+        Interpolate(Coefficient(V1), V2),
+        Interpolate(Coefficient(V1), Cofunction(V2.dual())),
+    ):
+        assert isinstance(-1 * interpolation, Product)
+        assert type(-interpolation) is type(-1 * interpolation)
+
+    # Addition still follows ufl_function_space(), so that a sum of adjoint
+    # interpolations stays a form -- see test_interpolate_expr.
+    adjoint_interpolation = Interpolate(test, target_space)
+    assert isinstance(adjoint_interpolation + adjoint_interpolation, FormSum)
+
+
 def test_form_compiler_signature(V1, V2, V3):
     interpolation = Interpolate(Coefficient(V1), V2)
     equivalent = Interpolate(Coefficient(V1), V2)
