@@ -933,12 +933,9 @@ class ZeroBaseForm(BaseForm):
     def signature(self):
         """Return a signature for use with JIT caches."""
         if self._signature is None:
-            renumbering = {
-                domain: i for i, domain in enumerate(self.ufl_domains())
-            }
+            renumbering = {domain: i for i, domain in enumerate(self.ufl_domains())}
             data = tuple(
-                argument._ufl_signature_data_(renumbering)
-                for argument in self.arguments()
+                argument._ufl_signature_data_(renumbering) for argument in self.arguments()
             )
             self._signature = hashlib.sha512(str(data).encode("utf-8")).hexdigest()
         return self._signature
