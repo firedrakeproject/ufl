@@ -13,7 +13,10 @@ from ufl.algorithms.apply_algebra_lowering import apply_algebra_lowering
 
 # These are the main symbolic processing steps:
 from ufl.algorithms.apply_derivatives import apply_coordinate_derivatives, apply_derivatives
-from ufl.algorithms.apply_function_pullbacks import apply_function_pullbacks
+from ufl.algorithms.apply_function_pullbacks import (
+    apply_function_pullbacks,
+    apply_interpolate_pullbacks,
+)
 from ufl.algorithms.apply_geometry_lowering import apply_geometry_lowering
 from ufl.algorithms.apply_integral_scaling import apply_integral_scaling
 from ufl.algorithms.cancel_jacobian_products import cancel_jacobian_products
@@ -138,6 +141,12 @@ def compute_form_data(
     # the same as the ones used in the final UFC form.
     # See 'reduced_coefficients' below.
     original_form = form
+
+    # Evaluate interpolations on the reference cell of their target element.
+    # This happens before any other lowering, so that the operand a form
+    # compiler sees is the one the target element dual-evaluates.
+    if do_apply_function_pullbacks:
+        form = apply_interpolate_pullbacks(form)
 
     # --- Pass form integrands through some symbolic manipulation
 
