@@ -181,9 +181,7 @@ class Interpolate(BaseFormOperator):
 
     def __neg__(self):
         """Negate the interpolation result."""
-        if self._value_parent_type() is Operator:
-            return Operator.__rmul__(self, -1)
-        return BaseForm.__neg__(self)
+        return self._value_parent_type().__rmul__(self, -1)
 
     def __mul__(self, other):
         """Multiply, agreeing with negation on which space the value is in."""
