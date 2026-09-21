@@ -98,7 +98,6 @@ class DAGTraverser:
             Processed expression.
 
         """
-
         new_ufl_operands = [self(operand, **kwargs) for operand in o.ufl_operands]
         if all(nc == c for nc, c in zip(new_ufl_operands, o.ufl_operands)):
             return o
